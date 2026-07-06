@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   reactCompiler: true,
+  async headers() {
+    return [
+      {
+        source: "/services/:file((?!.*\\.).*)",
+        headers: [{ key: "Content-Type", value: "image/jpeg" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
