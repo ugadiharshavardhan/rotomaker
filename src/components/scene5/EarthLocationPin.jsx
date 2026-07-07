@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { Html } from "@react-three/drei";
+import { useMemo, useRef } from "react";
+import { Billboard, Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { latLongToVector3, latLongToNormal } from "@/lib/latLongToVector3";
@@ -12,103 +12,96 @@ export function EarthLocationPin({
   longitude,
   name,
   mapUrl,
-  color = "#ffffff",
+  color = "#c77dff",
   index = 0,
   progress = 1,
 }) {
   const { surfaceRadius } = useEarthGlobe();
   const groupRef = useRef();
-  const glowRef = useRef();
-  const [hovered, setHovered] = useState(false);
+  const markerRef = useRef();
+  const ringRef = useRef();
+  const labelRef = useRef();
 
-  const pinRadius = surfaceRadius * 0.028;
-  const glowRadius = surfaceRadius * 0.055;
+  const markerRadius = surfaceRadius * 0.028;
 
-  const { position, lift } = useMemo(() => {
-    const pos = latLongToVector3(latitude, longitude, surfaceRadius);
-    const normal = latLongToNormal(latitude, longitude);
+  const { surfacePoint, normal, labelOffset } = useMemo(() => {
+    const n = latLongToNormal(latitude, longitude);
+    const point = latLongToVector3(latitude, longitude, surfaceRadius);
     return {
-      position: pos,
-      lift: normal.multiplyScalar(surfaceRadius * 0.006),
+      surfacePoint: point,
+      normal: n,
+      labelOffset: n.clone().multiplyScalar(surfaceRadius * 0.08),
     };
   }, [latitude, longitude, surfaceRadius]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const pulse = 1 + Math.sin(t * 2.4 + index * 1.1) * 0.14;
     const reveal = Math.min(1, progress);
+    const floatAmount = Math.sin(t * 1.4 + index * 0.9) * surfaceRadius * 0.002 * reveal;
 
     if (groupRef.current) {
-      groupRef.current.position.y = Math.sin(t * 1.5 + index) * surfaceRadius * 0.002 * reveal;
+      groupRef.current.position.copy(surfacePoint).addScaledVector(normal, floatAmount);
     }
 
-    if (glowRef.current) {
-      const hoverScale = hovered ? 1.25 : 1;
-      glowRef.current.scale.setScalar(pulse * hoverScale * reveal);
-      glowRef.current.material.opacity = (hovered ? 0.38 : 0.2 + pulse * 0.06) * reveal;
+    if (markerRef.current) {
+      const pulse = 1 + Math.sin(t * 2.4 + index * 1.1) * 0.12;
+      markerRef.current.scale.setScalar(pulse * reveal);
+    }
+
+    if (ringRef.current) {
+      const ringPulse = 1 + Math.sin(t * 2 + index) * 0.2;
+      ringRef.current.scale.setScalar(ringPulse);
+      ringRef.current.material.opacity = (0.18 + Math.sin(t * 3 + index) * 0.08) * reveal;
+      ringRef.current.rotation.z = t * 0.4 + index;
+    }
+
+    if (labelRef.current) {
+      labelRef.current.style.opacity = String(Math.min(1, reveal * 1.2));
+      labelRef.current.style.transform = `translateY(${Math.sin(t * 1.8 + index) * 3}px)`;
     }
   });
 
   return (
-    <group ref={groupRef} position={position}>
-      <group position={lift}>
-        <mesh
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            setHovered(true);
-            document.body.style.cursor = "pointer";
-          }}
-          onPointerOut={() => {
-            setHovered(false);
-            document.body.style.cursor = "auto";
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (mapUrl && typeof window !== "undefined") {
-              window.open(mapUrl, "_blank", "noopener,noreferrer");
-            }
-          }}
-        >
-          <sphereGeometry args={[pinRadius, 20, 20]} />
-          <meshBasicMaterial color={color} toneMapped={false} />
-        </mesh>
+    <group ref={groupRef} position={surfacePoint} renderOrder={15}>
+      <mesh
+        ref={markerRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (mapUrl && typeof window !== "undefined") {
+            window.open(mapUrl, "_blank", "noopener,noreferrer");
+          }
+        }}
+      >
+        <sphereGeometry args={[markerRadius, 20, 20]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.95}
+          toneMapped={false}
+          depthWrite={false}
+        />
+      </mesh>
 
-        <mesh ref={glowRef}>
-          <sphereGeometry args={[glowRadius, 16, 16]} />
-          <meshBasicMaterial
-            color={color}
-            transparent
-            opacity={0.22}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-          />
-        </mesh>
+      <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]} renderOrder={14}>
+        <ringGeometry args={[markerRadius * 1.8, markerRadius * 2.6, 32]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.2}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
 
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[glowRadius * 1.1, glowRadius * 1.55, 32]} />
-          <meshBasicMaterial
-            color={color}
-            transparent
-            opacity={0.18}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-          />
-        </mesh>
-
-        {hovered && (
-          <Html
-            center
-            distanceFactor={8}
-            position={[0, glowRadius * 2.2, 0]}
-            style={{ pointerEvents: "none" }}
-          >
-            <div className="earth-pin-tooltip">{name}</div>
-          </Html>
-        )}
-      </group>
+      <Billboard position={labelOffset} follow>
+        <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
+          <span ref={labelRef} className="globe-pin-label globe-pin-label--earth">
+            {name}
+          </span>
+        </Html>
+      </Billboard>
     </group>
   );
 }

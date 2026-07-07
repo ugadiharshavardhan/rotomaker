@@ -1,5 +1,8 @@
 import { Bebas_Neue, Geist, Geist_Mono } from "next/font/google";
 import { LOCAL_MOVIE_CARD_URLS } from "@/lib/imagePreload";
+import { MOVIE_IMAGES } from "@/lib/portfolioData";
+import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
+import { EARTH_GLB_PATH } from "@/lib/globeModelPath";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +34,13 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <head>
-        {LOCAL_MOVIE_CARD_URLS.map((href) => (
+        {[CAMERA_GLB_PATH, EARTH_GLB_PATH].map((href) => (
+          <link key={href} rel="preload" href={href} as="fetch" crossOrigin="anonymous" />
+        ))}
+        {MOVIE_IMAGES.map((href) => (
+          <link key={href} rel="preload" as="image" href={href} fetchPriority="high" />
+        ))}
+        {LOCAL_MOVIE_CARD_URLS.filter((href) => !MOVIE_IMAGES.includes(href)).slice(0, 6).map((href) => (
           <link key={href} rel="preload" as="image" href={href} fetchPriority="high" />
         ))}
       </head>

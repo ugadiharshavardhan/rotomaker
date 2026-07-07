@@ -3,43 +3,58 @@
 const cache = new Map();
 
 export function warmImage(src) {
-  if (!src || typeof window === "undefined") {
+  const url = typeof src === "string" ? src.trim() : "";
+  if (!url || typeof window === "undefined") {
     return Promise.resolve(null);
   }
 
-  const existing = cache.get(src);
+  const existing = cache.get(url);
   if (existing) return existing.promise;
 
   const img = new window.Image();
   img.decoding = "async";
   img.fetchPriority = "high";
+  img.referrerPolicy = "no-referrer";
 
   const entry = {
     img,
     ready: false,
+    ok: false,
     promise: new Promise((resolve) => {
-      const finish = () => {
+      img.onload = () => {
         entry.ready = true;
-        resolve(img);
+        entry.ok = img.naturalWidth > 0;
+        resolve(entry.ok ? img : null);
       };
-      img.onload = finish;
-      img.onerror = finish;
-      img.src = src;
+      img.onerror = () => {
+        entry.ready = true;
+        entry.ok = false;
+        resolve(null);
+      };
+      img.src = url;
     }),
   };
 
-  cache.set(src, entry);
+  cache.set(url, entry);
   return entry.promise;
 }
 
 export function warmImageCache(urls) {
-  return Promise.all(urls.map((src) => warmImage(src)));
+  return Promise.all(
+    urls
+      .filter((src) => typeof src === "string" && src.trim().length > 0)
+      .map((src) => warmImage(src.trim()))
+  );
 }
 
 export function isImageReady(src) {
-  return Boolean(cache.get(src)?.ready);
+  const url = typeof src === "string" ? src.trim() : "";
+  const entry = cache.get(url);
+  return Boolean(entry?.ready && entry?.ok);
 }
 
 export function getWarmImage(src) {
-  return cache.get(src)?.img ?? null;
+  const url = typeof src === "string" ? src.trim() : "";
+  const entry = cache.get(url);
+  return entry?.ok ? entry.img : null;
 }

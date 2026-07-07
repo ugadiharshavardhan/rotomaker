@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
+import { warmImageCache } from "@/lib/moviesImageCache";
 
 export function PortfolioImagePreloader() {
-  useEffect(() => {
-    MOVIE_IMAGES.forEach((src) => {
-      const img = new window.Image();
-      img.decoding = "async";
-      img.src = src;
-    });
+  useLayoutEffect(() => {
+    void warmImageCache(MOVIE_IMAGES);
   }, []);
 
   return (
     <div className="portfolio-preload" aria-hidden="true">
       {MOVIE_IMAGES.map((src) => (
-        <img key={src} src={src} alt="" decoding="async" fetchPriority="low" />
+        <img
+          key={src}
+          src={src}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          loading="eager"
+        />
       ))}
     </div>
   );

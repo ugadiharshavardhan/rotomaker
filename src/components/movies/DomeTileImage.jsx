@@ -3,33 +3,63 @@
 import { useEffect, useState } from "react";
 import { isImageReady, warmImage } from "@/lib/moviesImageCache";
 
-export function DomeTileImage({ src, alt }) {
-  const [ready, setReady] = useState(() => isImageReady(src));
+export function DomeTileImage({ src, alt, title }) {
+  const imageSrc = typeof src === "string" ? src.trim() : "";
+  const [loaded, setLoaded] = useState(() => (imageSrc ? isImageReady(imageSrc) : false));
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!src) return;
-    if (isImageReady(src)) {
-      setReady(true);
+    if (!imageSrc) {
+      setLoaded(false);
+      setFailed(false);
       return;
     }
+
+    if (isImageReady(imageSrc)) {
+      setLoaded(true);
+      setFailed(false);
+      return;
+    }
+
     let active = true;
-    warmImage(src).then(() => {
-      if (active) setReady(true);
+    setLoaded(false);
+    setFailed(false);
+
+    warmImage(imageSrc).then((img) => {
+      if (!active) return;
+      if (img && img.naturalWidth > 0) {
+        setLoaded(true);
+        setFailed(false);
+      } else {
+        setLoaded(false);
+        setFailed(true);
+      }
     });
+
     return () => {
       active = false;
     };
-  }, [src]);
+  }, [imageSrc]);
+
+  if (!imageSrc || failed) {
+    return (
+      <div className="dome-tile-placeholder" aria-label={alt}>
+        <span>{title || alt}</span>
+      </div>
+    );
+  }
 
   return (
     <img
-      src={src}
+      src={imageSrc}
       draggable={false}
       alt={alt}
       loading="eager"
       decoding="async"
       fetchPriority="high"
-      className={ready ? "dome-tile-img--ready" : "dome-tile-img--loading"}
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className={loaded ? "dome-tile-img--ready" : "dome-tile-img--loading"}
     />
   );
 }

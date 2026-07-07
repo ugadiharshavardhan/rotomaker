@@ -1,147 +1,23 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { Html } from "@react-three/drei";
+import { Suspense, useMemo, useRef } from "react";
+import { Environment } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { GLOBE_LOCATIONS } from "@/lib/sceneConfig";
-import { GLOBE_MODEL_RADIUS, getGlobeLayout } from "@/lib/globeModelPath";
-import { latLongToVector3 } from "@/lib/latLongToVector3";
+import { getGlobeLayout, getGlobeApproach } from "@/lib/globeModelPath";
+import { EarthGlobeModel } from "./EarthGlobeModel";
+import { EarthPinLayer } from "./EarthPinLayer";
+import { EarthGlobeEffects } from "./EarthGlobeEffects";
 
-const GLOBE_APPROACH_END = 0.38;
 const GLOBE_LOCKED_SCALE = 0.92;
 const GLOBE_FAR_SCALE = 0.28;
-
-function smoothstep(t) {
-  const c = Math.min(1, Math.max(0, t));
-  return c * c * (3 - 2 * c);
-}
-
-function getGlobeApproach(progress) {
-  return smoothstep(progress / GLOBE_APPROACH_END);
-}
-
-const MARKER_RADIUS = GLOBE_MODEL_RADIUS * 1.003;
 
 function useResponsiveGlobeScale() {
   const { size } = useThree();
   if (size.width < 480) return 0.58;
-  if (size.width < 768) return 0.72;
-  if (size.width < 1100) return 0.9;
-  return 1.05;
-}
-
-function GlobeArc({ from, to, progress, index }) {
-  const ref = useRef();
-  const geometry = useMemo(() => {
-    const start = latLongToVector3(from.lat, from.lng, MARKER_RADIUS);
-    const end = latLongToVector3(to.lat, to.lng, MARKER_RADIUS);
-    const mid = start.clone().add(end).multiplyScalar(0.5);
-    mid.normalize().multiplyScalar(GLOBE_MODEL_RADIUS * 1.06);
-    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-    return new THREE.BufferGeometry().setFromPoints(curve.getPoints(56));
-  }, [from, to]);
-
-  useFrame((state) => {
-    if (!ref.current) return;
-    ref.current.material.opacity =
-      0.1 + progress * 0.35 + Math.sin(state.clock.elapsedTime * 1.5 + index) * 0.08;
-  });
-
-  return (
-    <line ref={ref} geometry={geometry}>
-      <lineBasicMaterial color="#ffffff" transparent opacity={0.25} blending={THREE.AdditiveBlending} />
-    </line>
-  );
-}
-
-function LocationMarker({ latitude, longitude, progress, index, color = "#ffffff", name }) {
-  const groupRef = useRef();
-  const position = useMemo(
-    () => latLongToVector3(latitude, longitude, MARKER_RADIUS),
-    [latitude, longitude]
-  );
-  const labelOffset = useMemo(
-    () => position.clone().normalize().multiplyScalar(0.22),
-    [position]
-  );
-
-  useFrame((state) => {
-    if (!groupRef.current) return;
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * 2 + index) * 0.04;
-    groupRef.current.scale.setScalar(pulse);
-  });
-
-  return (
-    <group ref={groupRef} position={position}>
-      <mesh>
-        <sphereGeometry args={[0.045, 16, 16]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.085, 16, 16]} />
-        <meshBasicMaterial color={color} transparent opacity={0.14 + progress * 0.2} toneMapped={false} />
-      </mesh>
-      <Html
-        position={labelOffset}
-        center
-        distanceFactor={9}
-        style={{ pointerEvents: "none" }}
-      >
-        <span className="globe-pin-label" style={{ opacity: progress }}>
-          {name}
-        </span>
-      </Html>
-    </group>
-  );
-}
-
-function ProceduralGlobe({ progress, children }) {
-  return (
-    <group>
-      <mesh castShadow receiveShadow>
-        <sphereGeometry args={[GLOBE_MODEL_RADIUS, 64, 64]} />
-        <meshStandardMaterial color="#0a0a0a" roughness={0.95} metalness={0.05} />
-      </mesh>
-      <mesh scale={1.002}>
-        <sphereGeometry args={[GLOBE_MODEL_RADIUS, 32, 32]} />
-        <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.1 + progress * 0.06} />
-      </mesh>
-      {children}
-    </group>
-  );
-}
-
-function GlobeMarkers({ progress }) {
-  const markerColors = ["#ff8c42", "#ffffff", "#c77dff"];
-  const arcs = useMemo(() => {
-    const pairs = [];
-    for (let i = 0; i < GLOBE_LOCATIONS.length; i++) {
-      for (let j = i + 1; j < GLOBE_LOCATIONS.length; j++) {
-        pairs.push([GLOBE_LOCATIONS[i], GLOBE_LOCATIONS[j]]);
-      }
-    }
-    return pairs;
-  }, []);
-
-  return (
-    <>
-      {GLOBE_LOCATIONS.map((loc, i) => (
-        <LocationMarker
-          key={loc.name}
-          latitude={loc.lat}
-          longitude={loc.lng}
-          progress={progress}
-          index={i}
-          color={markerColors[i]}
-          name={loc.name}
-        />
-      ))}
-      {arcs.map(([from, to], i) => (
-        <GlobeArc key={`${from.name}-${to.name}`} from={from} to={to} progress={progress} index={i} />
-      ))}
-    </>
-  );
+  if (size.width < 768) return 0.74;
+  if (size.width < 1100) return 0.88;
+  return 0.96;
 }
 
 function FullPageStarfield({ progress, opacity = 1 }) {
@@ -182,49 +58,110 @@ function FullPageStarfield({ progress, opacity = 1 }) {
   );
 }
 
+function EarthSceneLighting({ opacity = 1 }) {
+  return (
+    <>
+      <ambientLight intensity={0.4 * opacity} color="#ffffff" />
+      <hemisphereLight args={["#ffffff", "#111111", 0.4 * opacity]} />
+      <directionalLight
+        position={[8, 4, 6]}
+        intensity={1.6 * opacity}
+        color="#fff8ee"
+        castShadow={false}
+      />
+      <directionalLight position={[-6, -2, -4]} intensity={0.2 * opacity} color="#888888" />
+      <Environment preset="night" environmentIntensity={0.35 * opacity} background={false} />
+    </>
+  );
+}
+
+function EarthGlobeScene({ approach, scrollProgress }) {
+  const spinRef = useRef();
+  const maxScrollRef = useRef(0);
+  const isDragging = useRef(false);
+  const dragOffset = useRef(0);
+  const lastPointerX = useRef(0);
+
+  maxScrollRef.current = Math.max(maxScrollRef.current, scrollProgress);
+
+  useFrame((state) => {
+    if (!spinRef.current) return;
+    const scrollSpin = maxScrollRef.current * Math.PI * 2.4;
+    const autoSpin = isDragging.current ? 0 : state.clock.elapsedTime * 0.07;
+    spinRef.current.rotation.y = scrollSpin + autoSpin + dragOffset.current;
+  });
+
+  return (
+    <group
+      ref={spinRef}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        isDragging.current = true;
+        lastPointerX.current = e.clientX;
+        e.target.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (!isDragging.current) return;
+        dragOffset.current += (e.clientX - lastPointerX.current) * 0.005;
+        lastPointerX.current = e.clientX;
+      }}
+      onPointerUp={(e) => {
+        isDragging.current = false;
+        e.target.releasePointerCapture(e.pointerId);
+      }}
+    >
+      <EarthGlobeModel>
+        <EarthPinLayer progress={approach} />
+      </EarthGlobeModel>
+    </group>
+  );
+}
+
 export function Scene5World({ progress, opacity = 1 }) {
-  const globeRef = useRef();
   const maxProgressRef = useRef(0);
+  const lockedLayoutRef = useRef(null);
 
   if (opacity <= 0) {
     maxProgressRef.current = 0;
+    lockedLayoutRef.current = null;
   } else {
     maxProgressRef.current = Math.max(maxProgressRef.current, progress);
   }
 
-  const approach = getGlobeApproach(maxProgressRef.current);
-  const scaleFactor = GLOBE_FAR_SCALE + approach * (GLOBE_LOCKED_SCALE - GLOBE_FAR_SCALE);
-  const globeDepth = -3.2 + approach * 3.2;
+  const layoutApproach = getGlobeApproach(maxProgressRef.current);
+  const scaleFactor = GLOBE_FAR_SCALE + layoutApproach * (GLOBE_LOCKED_SCALE - GLOBE_FAR_SCALE);
+  const globeDepth = -3.2 + layoutApproach * 3.2;
   const responsiveScale = useResponsiveGlobeScale();
   const { size } = useThree();
   const globeLayout = getGlobeLayout(size.width);
-  const globeX = globeLayout.worldX * approach;
+  const targetX = globeLayout.worldX * layoutApproach;
 
-  useFrame((state) => {
-    if (!globeRef.current) return;
-    globeRef.current.rotation.y = state.clock.elapsedTime * 0.1 + progress * 0.35;
-  });
+  if (layoutApproach >= 0.92 && !lockedLayoutRef.current) {
+    lockedLayoutRef.current = {
+      x: globeLayout.worldX,
+      depth: globeDepth,
+      scale: scaleFactor * responsiveScale,
+    };
+  }
+
+  const globeX = lockedLayoutRef.current?.x ?? targetX;
+  const globeZ = lockedLayoutRef.current?.depth ?? globeDepth;
+  const globeScale = lockedLayoutRef.current?.scale ?? scaleFactor * responsiveScale;
 
   if (opacity <= 0) return null;
 
   return (
     <>
-      <FullPageStarfield progress={approach} opacity={opacity} />
+      <FullPageStarfield progress={layoutApproach} opacity={opacity} />
 
-      <group
-        scale={scaleFactor * responsiveScale}
-        position={[globeX, 0, globeDepth]}
-      >
-        <ambientLight intensity={0.22 * opacity} />
-        <directionalLight position={[6, 4, 6]} intensity={1.35 * opacity} color="#ffffff" />
-        <directionalLight position={[-5, -1, -4]} intensity={0.18 * opacity} color="#446688" />
-
-        <group ref={globeRef}>
-          <ProceduralGlobe progress={approach}>
-            <GlobeMarkers progress={approach} />
-          </ProceduralGlobe>
-        </group>
+      <group scale={globeScale} position={[globeX, 0, globeZ]}>
+        <EarthSceneLighting opacity={opacity} />
+        <Suspense fallback={null}>
+          <EarthGlobeScene approach={layoutApproach} scrollProgress={progress} />
+        </Suspense>
       </group>
+
+      <EarthGlobeEffects opacity={opacity * layoutApproach} />
     </>
   );
 }

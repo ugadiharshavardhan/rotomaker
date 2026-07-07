@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "id": "feature",
+      "eyebrow": "Theatrical",
+      "title": "Feature Films",
+      "description": "Blockbuster features and franchise tentpoles delivered at studio scale.",
+      "movies": [
+        { "id": "spiderman", "title": "Spider-Man", "year": "2021", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRGS39GgTys8eycD98jk4SNxV2k5PWToyvrRcbwVySrwC4AOdkd2OmWpQU&s=10" },
+        { "id": "aquaman", "title": "Aquaman", "year": "2018", "image": "https://m.media-amazon.com/images/M/MV5BYjQ1ZTUzMWMtY2VkNS00ZDRjLWEwODYtYmFkMWJiNTQxMDUzXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg" },
+        { "id": "dune", "title": "Dune", "year": "2021", "image": "https://m.media-amazon.com/images/I/71FECoRx+wL._AC_UF1000,1000_QL80_.jpg" },
+        { "id": "avatar", "title": "Avatar", "year": "2022", "image": "https://m.media-amazon.com/images/I/71p8-bZQ+fL._AC_UF1000,1000_QL80_.jpg" },
+        { "id": "oppenheimer", "title": "Oppenheimer", "year": "2023", "image": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4a/Oppenheimer_%28film%29.jpg/250px-Oppenheimer_%28film%29.jpg" },
+        { "id": "interstellar", "title": "Interstellar", "year": "2014", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxSsNYogdd-tskz_MdYcyb-b5een5U4wJcmDFcUtdVtxj6hiBaDSjmercz&s=10" },
+        { "id": "blackpanther", "title": "Black Panther", "year": "2018", "image": "https://i.pinimg.com/736x/82/19/bd/8219bd41148bf3de22c86158eb14b979.jpg" },
+        { "id": "1917", "title": "1917", "year": "2019", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTchtuSEVhqfbgB0ltet2bU0tGPGPIw-GFM8Vt9XpSgnw&s=10" },
+        { "id": "matrix", "title": "The Matrix", "year": "2021", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzV-4cz3MQS1X8bnoWiuO70tyzZmNDRh-FvnUYwRXaPg&s=10" },
+        { "id": "blade-runner", "title": "Blade Runner 2049", "year": "2017", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToWcEX9N366zhCObF44a1ic171Ds0cTY8HWTDFqiFHpg&s=10" }
+      ]
+    },
+    {
+      "id": "commercial",
+      "eyebrow": "Branded Content",
+      "title": "Commercial",
+      "description": "High-end spots and branded films for global campaigns.",
+      "movies": [
+        { "id": "inception", "title": "Inception — Brand Film", "year": "2010", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOP0ggPwRNGNRa71veKGlaG0gJxSQhM5pWZsIAA3FgpfnldUFGqPY2Z4w&s=10" },
+        { "id": "gravity", "title": "Gravity — Spot Campaign", "year": "2013", "image": "https://m.media-amazon.com/images/M/MV5BNjE5MzYwMzYxMF5BMl5BanBnXkFtZTcwOTk4MTk0OQ@@._V1_FMjpg_UX1000_.jpg" },
+        { "id": "life-of-pi", "title": "Life of Pi — VFX Spot", "year": "2012", "image": "https://m.media-amazon.com/images/M/MV5BNTg2OTY2ODg5OF5BMl5BanBnXkFtZTcwODM5MTYxOA@@._V1_FMjpg_UX1000_.jpg" },
+        { "id": "mad-max", "title": "Mad Max — Action Spot", "year": "2015", "image": "https://c4.wallpaperflare.com/wallpaper/991/731/578/mad-max-fury-road-movies-car-mad-max-wallpaper-preview.jpg" },
+        { "id": "lion-king", "title": "The Lion King — Campaign", "year": "2019", "image": "https://4kwallpapers.com/images/wallpapers/mufasa-the-lion-king-2024-movies-disney-5k-2160x3840-8781.jpg" },
+        { "id": "tenet", "title": "Tenet — Launch Film", "year": "2020", "image": "https://m.media-amazon.com/images/S/pv-target-images/0ff85a20d29787132094d7f138ab20642178ff6e20085f0e9afd26dad903e12b.jpg" },
+        { "id": "ford-v-ferrari", "title": "Ford v Ferrari — Spot", "year": "2019", "image": "https://resizing.flixster.com/57WJsL4p6a3Q0O-xSSbus4KI8X0=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzZjNWVkN2M3LTUyNjYtNGRhMi1hMjYxLWY5ZDc1MDViZDVhMS53ZWJw" },
+        { "id": "top-gun", "title": "Top Gun: Maverick — Spot", "year": "2022", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdGLdVVGfu8cv4Sa-u3tgF6bF7nTlykMk8AW45gvrrVeCwul0sk7IQM58&s=10" },
+        { "id": "interstellar-ad", "title": "Interstellar — Brand Film", "year": "2014", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxSsNYogdd-tskz_MdYcyb-b5een5U4wJcmDFcUtdVtxj6hiBaDSjmercz&s=10" },
+        { "id": "dune-ad", "title": "Dune — Launch Campaign", "year": "2021", "image": "https://upload.wikimedia.org/wikipedia/en/thumb/8/8e/Dune_%282021_film%29.jpg/250px-Dune_%282021_film%29.jpg" }
+      ]
+    },
+    {
+      "id": "domestic",
+      "eyebrow": "Indian Cinema",
+      "title": "Domestic — Telugu",
+      "description": "Telugu blockbusters and pan-India epics from the south.",
+      "movies": [
+        { "id": "rrr", "title": "RRR", "year": "2022", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSeDLw2nj5zMYV2pj1tFWNr1T6SC9CJmdBAuZYM51blMxNgTNlUQARYcyJR&s=10" },
+        { "id": "baahubali-1", "title": "Baahubali: The Beginning", "year": "2015", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYTIoEoMRvcVdeE2bHUARFk-Y9YMzu9dSWRo7eIi7QJR8I5NA4A2GVNb8&s=10" },
+        { "id": "baahubali-2", "title": "Baahubali 2: The Conclusion", "year": "2017", "image": "https://cdnb.artstation.com/p/assets/images/images/005/949/201/medium/rakesh-lx-baahubali-2-new-poster-maha-shivaratri.jpg?1494928723" },
+        { "id": "pushpa", "title": "Pushpa: The Rise", "year": "2021", "image": "https://m.media-amazon.com/images/S/pv-target-images/94e59e9b1d60c5568b43bf5b1c62e8f556654508d2f0fa81424b479b22459338.jpg" },
+        { "id": "kgf-1", "title": "KGF: Chapter 1", "year": "2018", "image": "https://m.media-amazon.com/images/S/pv-target-images/0978dc3775492a124027b21df5153ab61b4c90cc518cbe126ebb3769d34640d5.jpg" },
+        { "id": "kgf-2", "title": "KGF: Chapter 2", "year": "2022", "image": "https://mrwallpaper.com/images/hd/cool-kgf-chapter-2-poster-0axobl2ual8wurln.jpg" },
+        { "id": "magadheera", "title": "Magadheera", "year": "2009", "image": "https://i.pinimg.com/236x/4b/f4/df/4bf4df457dfcd13692eb20a21780de00.jpg" },
+        { "id": "rangasthalam", "title": "Rangasthalam", "year": "2018", "image": "https://m.media-amazon.com/images/S/pv-target-images/798fa523a1729f4f2e81ef55f51d91c8b12c4ddd7feede2219be3fe611433e95.jpg" },
+        { "id": "avpl", "title": "Ala Vaikunthapurramuloo", "year": "2020", "image": "https://m.media-amazon.com/images/M/MV5BOWIyYmQwODMtZGIzNS00ZGJmLTlkMzMtZTYwM2IwM2U2YzZhXkEyXkFqcGc@._V1_.jpg" },
+        { "id": "arjun-reddy", "title": "Arjun Reddy", "year": "2017", "image": "https://wallpapercave.com/wp/wp4477498.jpg" }
+      ]
+    }
+  ]
+}

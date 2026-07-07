@@ -18,8 +18,8 @@ export function Scene9Overlay({ scene9, opacity = 1 }) {
   const { index, segmentProgress, overall, isHolding } = scene9;
   const stat = STATS[index];
   const reveal = Math.min(1, overall / 0.12);
-  const numberReveal = Math.min(1, segmentProgress / 0.85);
-  const displayValue = formatValue(stat, segmentProgress);
+  const numberReveal = isHolding || segmentProgress >= 0.98 ? 1 : Math.min(1, segmentProgress / 0.85);
+  const displayValue = formatValue(stat, isHolding ? 1 : segmentProgress);
 
   if (opacity <= 0) return null;
 
@@ -30,10 +30,11 @@ export function Scene9Overlay({ scene9, opacity = 1 }) {
       </header>
 
       <div
+        key={stat.id}
         className={`scene9-stat${isHolding ? " scene9-stat--hold" : ""}`}
         style={{
           opacity: numberReveal,
-          transform: `scale(${0.92 + numberReveal * 0.08})`,
+          transform: isHolding ? "scale(1)" : `scale(${0.92 + numberReveal * 0.08})`,
         }}
       >
         <span className="scene9-stat__value">{displayValue}</span>

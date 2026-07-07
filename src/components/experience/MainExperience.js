@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { getSceneState, getActiveSceneOpacity } from "@/lib/sceneConfig";
+import dynamic from "next/dynamic";
+import { getSceneState, getActiveSceneOpacity, getStoryOverlayOpacity, getSceneBounds } from "@/lib/sceneConfig";
 import { EXPERIENCE_IMAGE_URLS } from "@/lib/imagePreload";
 import { warmImageCache } from "@/lib/moviesImageCache";
 import { useScrollExperience } from "@/hooks/useScrollExperience";
 import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress } from "@/lib/cameraLens";
-import { UnifiedCanvas } from "./UnifiedCanvas";
+import { ExperienceAssetPreloader } from "@/components/preload/ExperienceAssetPreloader";
 import { ScrollPulseLayer } from "./ScrollPulseLayer";
 import { HeroTypography } from "@/components/typography/HeroTypography";
 import { TrackingCursor } from "@/components/interactions/TrackingCursor";
@@ -24,7 +25,8 @@ import { ServiceImagePreloader } from "@/components/scene2/ServiceImagePreloader
 import { ExperienceImagePreloader } from "@/components/ExperienceImagePreloader";
 import { ServicesSection } from "@/components/scene2/ServicesSection";
 import { ServicesEvilEyeBg } from "@/components/services/ServicesEvilEyeBg";
-import { getServicesIntroBgOpacity } from "@/lib/servicesVisualState";
+import { ServicesGradientBlindsBg } from "@/components/services/ServicesGradientBlindsBg";
+import { getServicesCardsBgOpacity, getServicesIntroBgOpacity } from "@/lib/servicesVisualState";
 import { Scene4Overlay } from "@/components/scene4/Scene4Overlay";
 import { Scene5Overlay } from "@/components/scene5/Scene5Overlay";
 import { Scene6Overlay } from "@/components/scene6/Scene6Overlay";
@@ -35,6 +37,11 @@ import { AboutSection } from "@/components/about/AboutSection";
 import { WhySection } from "@/components/about/WhySection";
 import { StoryHyperspeedBg } from "@/components/about/StoryHyperspeedBg";
 import { Scene12Overlay } from "@/components/scene12/Scene12Overlay";
+
+const UnifiedCanvas = dynamic(
+  () => import("./UnifiedCanvas").then((m) => m.UnifiedCanvas),
+  { ssr: false }
+);
 
 export default function MainExperience() {
   const triggerRef = useRef(null);
@@ -82,28 +89,34 @@ export default function MainExperience() {
   const scene11 = scenes[11];
   const scene12 = scenes[12];
 
-  const isInteractive = globalProgress >= 0.635;
+  const isInteractive = globalProgress >= getSceneBounds(6).start;
 
   const overlay2 = getActiveSceneOpacity(globalProgress, 2);
   const overlay3 = getActiveSceneOpacity(globalProgress, 3);
   const overlay4 = getActiveSceneOpacity(globalProgress, 4);
   const overlayGlobe = getActiveSceneOpacity(globalProgress, 6);
-  const overlayReel = getActiveSceneOpacity(globalProgress, 7);
-  const overlayMovies = getActiveSceneOpacity(globalProgress, 8);
-  const overlayVfx = getActiveSceneOpacity(globalProgress, 9);
-  const overlayStats = getActiveSceneOpacity(globalProgress, 10);
-  const overlayAbout = getActiveSceneOpacity(globalProgress, 11);
-  const overlayWhy = getActiveSceneOpacity(globalProgress, 12);
+  const overlayReel = getStoryOverlayOpacity(globalProgress, 7);
+  const overlayMovies = getStoryOverlayOpacity(globalProgress, 8);
+  const overlayVfx = getStoryOverlayOpacity(globalProgress, 9);
+  const overlayStats = getStoryOverlayOpacity(globalProgress, 10);
+  const overlayAbout = getStoryOverlayOpacity(globalProgress, 11);
+  const overlayWhy = getStoryOverlayOpacity(globalProgress, 12);
 
   const scene1Phase = getScene1Phase(scene1.progress);
   const isPureHero = scene1Phase === "hero";
   const isVfxSection = scene1Phase === "vfx";
   const activeSceneId = sceneState.activeScene.id;
   const isGalleryScene = activeSceneId === 7 || activeSceneId === 8;
+  const moviesSceneStart = getSceneBounds(8).start;
+  const ctaSceneStart = getSceneBounds(13).start;
+  const isStoryContent = globalProgress >= moviesSceneStart && globalProgress < ctaSceneStart;
   const scene1Backdrop = scene1.opacity > 0.01 ? getScene1Backdrop(scene1.progress) : "#030303";
 
-  const vignetteStrength =
-    isGalleryScene ? 0.22 : 0.55 + globalProgress * 0.1;
+  const vignetteStrength = isStoryContent
+    ? 0.06
+    : isGalleryScene
+      ? 0.22
+      : 0.55 + globalProgress * 0.1;
   const flareOpacity = isVfxSection
     ? Math.max(0, Math.min(1, getVfxLocalProgress(scene1.progress) * 0.35) * scene1.opacity)
     : 0;
@@ -111,13 +124,13 @@ export default function MainExperience() {
   const lensDive = isVfxSection ? getVfxLocalProgress(scene1.progress) : 0;
 
   const studioFade =
-    globalProgress >= 0.975 && globalProgress < 0.992
-      ? Math.min(1, (globalProgress - 0.975) / 0.017)
+    globalProgress >= ctaSceneStart && globalProgress < ctaSceneStart + 0.017
+      ? Math.min(1, (globalProgress - ctaSceneStart) / 0.017)
       : 0;
 
   const contactOpacity =
-    globalProgress >= 0.975
-      ? getActiveSceneOpacity(globalProgress, 13, 0.015)
+    globalProgress >= ctaSceneStart
+      ? getStoryOverlayOpacity(globalProgress, 13, 0.018)
       : 0;
 
   const storyHyperspeedOpacity =
@@ -129,9 +142,16 @@ export default function MainExperience() {
     studioFade
   );
 
+  const servicesGradientBlindsOpacity = getServicesCardsBgOpacity(
+    scene3.progress,
+    overlay3,
+    studioFade
+  );
+
   return (
     <>
-      <TrackingCursor enabled={overlayMovies <= 0.01} />
+      <ExperienceAssetPreloader />
+      <TrackingCursor enabled={globalProgress < moviesSceneStart} />
       <PortfolioImagePreloader />
       <ServiceImagePreloader />
       <ExperienceImagePreloader />
@@ -164,19 +184,19 @@ export default function MainExperience() {
           className={`scene-canvas-wrap${sceneState.activeScene.id === 2 ? " scene-canvas-wrap--portfolio-content" : ""}`}
           style={{
             opacity: isPureHero || activeSceneId === 2 || activeSceneId === 7 ? 0 : 1,
-            transition: "opacity 0.5s ease",
+            transition: "opacity 0.65s ease",
           }}
         >
           <UnifiedCanvas sceneState={sceneState} />
         </div>
 
-        <ScrollPulseLayer microBeat={microBeat} />
+        <ScrollPulseLayer microBeat={microBeat} suppressed={isStoryContent} />
 
         <div
           className="scene-vignette"
           style={{
             opacity: isPureHero || scene1Phase === "impossible" ? 0 : Math.max(0, 1 - lensDive * 0.85),
-            transition: "opacity 0.35s ease",
+            transition: "opacity 0.55s ease",
             background: `radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,${vignetteStrength + studioFade * 0.2}) 100%)`,
           }}
         />
@@ -215,6 +235,16 @@ export default function MainExperience() {
             aria-hidden="true"
           >
             <ServicesEvilEyeBg />
+          </div>
+        )}
+
+        {servicesGradientBlindsOpacity > 0.01 && (
+          <div
+            className="services-gradient-blinds-layer"
+            style={{ opacity: servicesGradientBlindsOpacity }}
+            aria-hidden="true"
+          >
+            <ServicesGradientBlindsBg />
           </div>
         )}
 

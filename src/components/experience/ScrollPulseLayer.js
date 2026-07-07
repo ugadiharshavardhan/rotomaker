@@ -1,6 +1,8 @@
 "use client";
 
-export function ScrollPulseLayer({ microBeat }) {
+export function ScrollPulseLayer({ microBeat, suppressed = false }) {
+  if (suppressed) return null;
+
   const { effect, beatProgress, index } = microBeat;
 
   return (

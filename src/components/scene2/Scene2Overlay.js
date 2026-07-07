@@ -1,10 +1,16 @@
 "use client";
 
-import { MOVIE_CARDS, getPortfolioItemIndex } from "@/lib/portfolioData";
+import { useLayoutEffect } from "react";
+import { MOVIE_CARDS, getPortfolioItemIndex, MOVIE_IMAGES } from "@/lib/portfolioData";
+import { warmImageCache } from "@/lib/moviesImageCache";
 import { LeftMovieTitles } from "./LeftMovieTitles";
 import { MoviePosterCard } from "./MoviePosterCard";
 
 export function Scene2Overlay({ progress, opacity = 1 }) {
+  useLayoutEffect(() => {
+    void warmImageCache(MOVIE_IMAGES);
+  }, []);
+
   if (opacity <= 0.01) return null;
 
   const { index: activeIndex, segmentProgress } = getPortfolioItemIndex(
@@ -12,7 +18,7 @@ export function Scene2Overlay({ progress, opacity = 1 }) {
     MOVIE_CARDS.length
   );
   const movie = MOVIE_CARDS[activeIndex];
-  const reveal = Math.min(1, segmentProgress / 0.35);
+  const reveal = Math.min(1, segmentProgress / 0.28);
 
   return (
     <div className="enhanced-movies" style={{ opacity }}>
@@ -31,7 +37,7 @@ export function Scene2Overlay({ progress, opacity = 1 }) {
         </div>
 
         <div className="enhanced-movies__card-stage">
-          <MoviePosterCard key={movie.id} movie={movie} reveal={reveal} isActive />
+          <MoviePosterCard key={movie.id} movie={movie} reveal={reveal} />
         </div>
 
         <div

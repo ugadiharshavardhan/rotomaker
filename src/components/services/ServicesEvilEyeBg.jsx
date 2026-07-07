@@ -2,18 +2,21 @@
 
 import dynamic from "next/dynamic";
 
-const EvilEye = dynamic(() => import("./EvilEye"), { ssr: false });
+const EvilEye = dynamic(() => import("./EvilEye"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const EVIL_EYE_OPTIONS = {
-  eyeColor: "#F0F0F0",
-  intensity: 1.2,
-  pupilSize: 0.58,
+  eyeColor: "#FF6F37",
+  intensity: 1.5,
+  pupilSize: 0.6,
   irisWidth: 0.25,
-  glowIntensity: 0.3,
+  glowIntensity: 0.35,
   scale: 0.72,
   noiseScale: 1.0,
   pupilFollow: 0.45,
-  flameSpeed: 0.85,
+  flameSpeed: 1.0,
   backgroundColor: "#030303",
 };
 

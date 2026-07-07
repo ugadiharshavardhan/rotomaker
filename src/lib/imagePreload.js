@@ -3,15 +3,26 @@ import { PORTFOLIO } from "@/lib/experienceData";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
 import { warmImageCache } from "@/lib/moviesImageCache";
 
+/** Skip blank URLs so preloaders never render `<img src="">`. */
+function isValidImageUrl(src) {
+  return typeof src === "string" && src.trim().length > 0;
+}
+
 /** All unique image URLs used across the experience. */
 export function collectExperienceImageUrls() {
   const urls = new Set();
 
-  MOVIE_IMAGES.forEach((src) => urls.add(src));
-  PORTFOLIO.forEach((item) => urls.add(item.image));
+  MOVIE_IMAGES.forEach((src) => {
+    if (isValidImageUrl(src)) urls.add(src.trim());
+  });
+  PORTFOLIO.forEach((item) => {
+    if (isValidImageUrl(item.image)) urls.add(item.image.trim());
+  });
 
   MOVIE_LIBRARY_CATEGORIES.forEach((category) => {
-    category.movies.forEach((movie) => urls.add(movie.image));
+    category.movies.forEach((movie) => {
+      if (isValidImageUrl(movie.image)) urls.add(movie.image.trim());
+    });
   });
 
   urls.add("/vfx/vfx-after.png");

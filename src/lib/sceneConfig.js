@@ -2,21 +2,22 @@ import { getMicroBeatState } from "./microBeats";
 import { STATS } from "./experienceData";
 import { ABOUT_SCROLL_PANELS } from "./aboutData";
 import { getStatItemIndex, getAboutPanelIndex } from "./statsScroll";
+import { clamp, crossfadeOpacity } from "./easing";
 
 export const SCENES = [
   { id: 1, name: "intro", start: 0, end: 0.145 },
-  { id: 2, name: "portfolio", start: 0.145, end: 0.305 },
-  { id: 3, name: "services", start: 0.305, end: 0.565 },
-  { id: 4, name: "pipeline", start: 0.565, end: 0.565 },
-  { id: 5, name: "services-words", start: 0.565, end: 0.565 },
-  { id: 6, name: "globe", start: 0.565, end: 0.702 },
-  { id: 7, name: "portfolio-reel", start: 0.708, end: 0.812 },
-  { id: 8, name: "movies-library", start: 0.815, end: 0.875 },
-  { id: 9, name: "beforeafter", start: 0.875, end: 0.905 },
-  { id: 10, name: "stats", start: 0.905, end: 0.928 },
-  { id: 11, name: "about", start: 0.928, end: 0.962 },
-  { id: 12, name: "why", start: 0.962, end: 0.975 },
-  { id: 13, name: "cta", start: 0.975, end: 1.0 },
+  { id: 2, name: "portfolio", start: 0.145, end: 0.338 },
+  { id: 3, name: "services", start: 0.318, end: 0.525 },
+  { id: 4, name: "pipeline", start: 0.52, end: 0.52 },
+  { id: 5, name: "services-words", start: 0.52, end: 0.52 },
+  { id: 6, name: "globe", start: 0.515, end: 0.608 },
+  { id: 7, name: "portfolio-reel", start: 0.592, end: 0.692 },
+  { id: 8, name: "movies-library", start: 0.678, end: 0.862 },
+  { id: 9, name: "beforeafter", start: 0.844, end: 0.898 },
+  { id: 10, name: "stats", start: 0.884, end: 0.944 },
+  { id: 11, name: "about", start: 0.928, end: 0.976 },
+  { id: 12, name: "why", start: 0.966, end: 0.994 },
+  { id: 13, name: "cta", start: 0.982, end: 1.0 },
 ];
 
 export const SCENE4_WORDS = [
@@ -39,8 +40,8 @@ export const GLOBE_LOCATIONS = [
   },
   {
     name: "USA",
-    lat: 39.833,
-    lng: -98.583,
+    lat: 39.8283,
+    lng: -98.5795,
     label: "Los Angeles · New York · Atlanta",
     mapUrl: "https://maps.app.goo.gl/dvsRWEMQEYBioBTF7",
   },
@@ -53,10 +54,16 @@ export const GLOBE_LOCATIONS = [
   },
 ];
 
-export const SCROLL_HEIGHT_VH = 1600;
+export const SCROLL_HEIGHT_VH = 2400;
 
-function clamp(value, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value));
+export function getSceneBounds(sceneId) {
+  const scene = SCENES.find((s) => s.id === sceneId);
+  return scene ? { start: scene.start, end: scene.end } : { start: 0, end: 0 };
+}
+
+export function isGlobalInScene(globalProgress, sceneId) {
+  const { start, end } = getSceneBounds(sceneId);
+  return globalProgress >= start && globalProgress < end;
 }
 
 export function getSceneProgress(global, start, end) {
@@ -67,52 +74,67 @@ function isLastScene(scene) {
   return scene.id === SCENES[SCENES.length - 1].id;
 }
 
-export function getSceneOpacity(global, start, end, fade = 0.008) {
+export function getSceneOpacity(global, start, end, edgeFade = 0.022) {
   const last = SCENES[SCENES.length - 1];
   const isLast = end === last.end && start === last.start;
-
-  if (global < start || (!isLast && global >= end)) return 0;
-
-  const span = end - start;
-  const edgeFade = Math.min(fade, span * 0.12);
-  const fadeIn = clamp((global - start) / edgeFade);
-  const fadeOut = isLast ? 1 : clamp((end - global) / edgeFade);
-  return Math.min(fadeIn, fadeOut);
+  return crossfadeOpacity(global, start, end, edgeFade, isLast);
 }
 
-/** Only the active scene is visible — prevents portfolio/services/pipeline overlap. */
-export function getActiveSceneOpacity(globalProgress, sceneId, edgeFade = 0.012) {
-  const last = SCENES[SCENES.length - 1];
-  const active =
-    SCENES.find(
-      (s) =>
-        globalProgress >= s.start &&
-        (globalProgress < s.end || isLastScene(s))
-    ) ?? last;
-
-  if (active.id !== sceneId) return 0;
-
+/** Crossfade overlays for gallery / story sections (allows brief overlap at boundaries). */
+export function getStoryOverlayOpacity(globalProgress, sceneId, edgeFade = 0.038) {
   const scene = SCENES.find((s) => s.id === sceneId);
   if (!scene) return 0;
+  return crossfadeOpacity(
+    globalProgress,
+    scene.start,
+    scene.end,
+    edgeFade,
+    isLastScene(scene)
+  );
+}
 
-  const fadeIn = clamp((globalProgress - scene.start) / edgeFade);
-  const fadeOut = isLastScene(scene) ? 1 : clamp((scene.end - globalProgress) / edgeFade);
-  return Math.min(fadeIn, fadeOut);
+function resolveActiveScene(globalProgress, scenes) {
+  const inRange = scenes.filter(
+    (s) =>
+      globalProgress >= s.start &&
+      (globalProgress < s.end || s.id === scenes[scenes.length - 1].id)
+  );
+
+  if (inRange.length > 0) {
+    return inRange.reduce((best, s) => (s.opacity > best.opacity ? s : best), inRange[0]);
+  }
+
+  return scenes.reduce((best, s) => {
+    const mid = (s.start + s.end) * 0.5;
+    const bestMid = (best.start + best.end) * 0.5;
+    return Math.abs(globalProgress - mid) < Math.abs(globalProgress - bestMid) ? s : best;
+  });
+}
+
+/** Crossfaded overlay opacity — adjacent sections blend at boundaries. */
+export function getActiveSceneOpacity(globalProgress, sceneId, edgeFade = 0.026) {
+  const scene = SCENES.find((s) => s.id === sceneId);
+  if (!scene) return 0;
+  return crossfadeOpacity(
+    globalProgress,
+    scene.start,
+    scene.end,
+    edgeFade,
+    isLastScene(scene)
+  );
 }
 
 export function getSceneState(globalProgress) {
   const scenes = SCENES.map((scene) => ({
     ...scene,
     progress: getSceneProgress(globalProgress, scene.start, scene.end),
-    opacity: getSceneOpacity(globalProgress, scene.start, scene.end),
+    opacity:
+      scene.id >= 7
+        ? getStoryOverlayOpacity(globalProgress, scene.id)
+        : getSceneOpacity(globalProgress, scene.start, scene.end),
   }));
 
-  const active =
-    scenes.find(
-      (s) =>
-        globalProgress >= s.start &&
-        (globalProgress < s.end || s.id === scenes[scenes.length - 1].id)
-    ) ?? scenes[scenes.length - 1];
+  const active = resolveActiveScene(globalProgress, scenes);
 
   const scene4Overall = getSceneProgress(
     globalProgress,

@@ -1,8 +1,28 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useState } from "react";
+import { isImageReady, warmImage } from "@/lib/moviesImageCache";
 
-export function MoviePosterCard({ movie, reveal = 1, isActive = true }) {
+export function MoviePosterCard({ movie, reveal = 1 }) {
+  const [loaded, setLoaded] = useState(() => isImageReady(movie.image));
+
+  useEffect(() => {
+    if (isImageReady(movie.image)) {
+      setLoaded(true);
+      return;
+    }
+
+    let active = true;
+    warmImage(movie.image).then((img) => {
+      if (!active) return;
+      setLoaded(Boolean(img && img.naturalWidth > 0));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [movie.image]);
+
   return (
     <div
       className="enhanced-movies__poster"
@@ -17,15 +37,13 @@ export function MoviePosterCard({ movie, reveal = 1, isActive = true }) {
         <span className="enhanced-movies__poster-corner enhanced-movies__poster-corner--bl" />
         <span className="enhanced-movies__poster-corner enhanced-movies__poster-corner--br" />
       </div>
-      <Image
+      <img
         src={movie.image}
         alt={movie.title}
-        fill
-        sizes="(max-width: 768px) 60vw, 17rem"
-        quality={75}
-        priority={isActive}
-        loading={isActive ? "eager" : "lazy"}
-        className="enhanced-movies__poster-img"
+        decoding="async"
+        fetchPriority="high"
+        loading="eager"
+        className={`enhanced-movies__poster-img${loaded ? " enhanced-movies__poster-img--ready" : ""}`}
       />
     </div>
   );

@@ -2,7 +2,10 @@
 
 import dynamic from "next/dynamic";
 
-const LightRays = dynamic(() => import("./LightRays"), { ssr: false });
+const LightRays = dynamic(() => import("./LightRays"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const HERO_END = 0.05;
 

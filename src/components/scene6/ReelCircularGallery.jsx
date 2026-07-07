@@ -5,7 +5,10 @@ import { useLayoutEffect, useMemo } from "react";
 import { PORTFOLIO } from "@/lib/experienceData";
 import { warmImageCache } from "@/lib/moviesImageCache";
 
-const CircularGallery = dynamic(() => import("./CircularGallery"), { ssr: false });
+const CircularGallery = dynamic(() => import("./CircularGallery"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const REEL_IMAGES = PORTFOLIO.map((item) => item.image);
 

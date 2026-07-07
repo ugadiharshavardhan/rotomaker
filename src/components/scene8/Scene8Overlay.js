@@ -1,10 +1,11 @@
 "use client";
 
 import { BEFORE_AFTER } from "@/lib/experienceData";
+import { sectionReveal, smoothstep, clamp } from "@/lib/easing";
 
 export function Scene8Overlay({ progress, opacity = 1 }) {
-  const reveal = Math.min(1, progress / 0.15);
-  const wipe = Math.min(1, Math.max(0, (progress - 0.1) / 0.75));
+  const reveal = sectionReveal(progress, 0.2);
+  const wipe = smoothstep(clamp((progress - 0.08) / 0.78));
   const wipePercent = wipe * 100;
 
   if (opacity <= 0) return null;

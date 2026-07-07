@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { PORTFOLIO } from "@/lib/experienceData";
 import { getReelItemIndex } from "@/lib/statsScroll";
+import { sectionReveal } from "@/lib/easing";
 import { MagneticButton } from "@/components/interactions/MagneticButton";
 import { ReelCircularGallery } from "@/components/scene6/ReelCircularGallery";
 
 export function Scene6Overlay({ progress, opacity = 1 }) {
   const [hoveredId, setHoveredId] = useState(null);
-  const reveal = Math.min(1, progress / 0.15);
+  const reveal = sectionReveal(progress, 0.2);
   const count = PORTFOLIO.length;
   const { index: activeIndex } = getReelItemIndex(progress, count);
   const active = PORTFOLIO[activeIndex];

@@ -5,12 +5,15 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { getGlobeLayout } from "@/lib/globeModelPath";
 
+import { getSceneBounds } from "@/lib/sceneConfig";
+
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
 function isGlobeScene(globalProgress) {
-  return globalProgress >= 0.565 && globalProgress < 0.708;
+  const { start, end } = getSceneBounds(6);
+  return globalProgress >= start && globalProgress < end;
 }
 
 function getBaseZ(globalProgress, scenes) {
@@ -31,17 +34,17 @@ function getBaseZ(globalProgress, scenes) {
     return lerp(14, 6.5, enter) - scenes[0].progress * 2;
   }
   if (globalProgress < 0.305) return lerp(6.5, 8, scenes[1].progress);
-  if (globalProgress < 0.565) return lerp(10, 7, p3);
-  if (globalProgress < 0.635) return lerp(8, 6, p4);
+  if (globalProgress < getSceneBounds(3).end) return lerp(10, 7, p3);
+  if (globalProgress < getSceneBounds(6).start + 0.04) return lerp(8, 6, p4);
   if (isGlobeScene(globalProgress)) {
     return 8.4;
   }
-  if (globalProgress < 0.815) return lerp(9.2, 8.8, p7);
-  if (globalProgress < 0.875) return lerp(8, 7, p8);
-  if (globalProgress < 0.905) return lerp(8, 6, p9);
-  if (globalProgress < 0.955) return lerp(7, 8.5, p10);
-  if (globalProgress < 0.98) return lerp(9, 7, p11);
-  if (globalProgress < 0.992) return lerp(8, 6.5, p12);
+  if (globalProgress < getSceneBounds(8).start) return lerp(9.2, 8.8, p7);
+  if (globalProgress < getSceneBounds(9).start) return lerp(8, 7, p8);
+  if (globalProgress < getSceneBounds(10).start) return lerp(8, 6, p9);
+  if (globalProgress < getSceneBounds(11).start) return lerp(7, 8.5, p10);
+  if (globalProgress < getSceneBounds(12).start) return lerp(9, 7, p11);
+  if (globalProgress < getSceneBounds(13).start) return lerp(8, 6.5, p12);
   return lerp(7, 5, p13);
 }
 
@@ -49,7 +52,7 @@ function getBaseY(globalProgress, scenes) {
   if (globalProgress < 0.145) {
     return lerp(2, 0.2, Math.min(1, scenes[0].progress / 0.2));
   }
-  if (globalProgress >= 0.96) {
+  if (globalProgress >= getSceneBounds(13).start) {
     const exitP = scenes[12]?.progress ?? 0;
     return lerp(0.2, 2.5, exitP);
   }
@@ -66,6 +69,12 @@ function getBaseX(globalProgress, scenes) {
   return Math.sin(globalProgress * Math.PI * 2) * 0.35;
 }
 
+function isStoryScene(globalProgress) {
+  const { start } = getSceneBounds(7);
+  const { start: ctaStart } = getSceneBounds(13);
+  return globalProgress >= start && globalProgress < ctaStart;
+}
+
 function isPortfolioScene(globalProgress) {
   return globalProgress >= 0.145 && globalProgress < 0.305;
 }
@@ -73,6 +82,7 @@ function isPortfolioScene(globalProgress) {
 export function HollywoodCameraRig({ sceneState }) {
   const { camera, size } = useThree();
   const lookTarget = useRef(new THREE.Vector3(0, 0, 0));
+  const cameraTarget = useRef(new THREE.Vector3(0, 1.2, 5.5));
   const maxGlobeProgress = useRef(0);
   const { globalProgress, scenes, microBeat } = sceneState;
 
@@ -81,10 +91,11 @@ export function HollywoodCameraRig({ sceneState }) {
     const beat = microBeat?.float ?? globalProgress * 100;
     const portfolio = isPortfolioScene(globalProgress);
     const globe = isGlobeScene(globalProgress);
-    const steadyCamera = portfolio || globe;
+    const story = isStoryScene(globalProgress);
+    const steadyCamera = portfolio || globe || story;
 
     if (!globe) {
-      if (globalProgress < 0.565) maxGlobeProgress.current = 0;
+      if (globalProgress < getSceneBounds(6).start) maxGlobeProgress.current = 0;
     } else {
       maxGlobeProgress.current = Math.max(
         maxGlobeProgress.current,
@@ -122,18 +133,21 @@ export function HollywoodCameraRig({ sceneState }) {
     let exitPull = 0;
     let exitLift = 0;
     let lookDown = 0;
-    if (globalProgress >= 0.96) {
+    if (globalProgress >= getSceneBounds(13).start) {
       const exitP = scenes[12]?.progress ?? 0;
       exitPull = exitP * 14;
       exitLift = exitP * 2.8;
       lookDown = exitP * 1.2;
     }
 
-    camera.position.set(
+    cameraTarget.current.set(
       baseX + orbitX,
       baseY + orbitY + crane + exitLift,
       baseZ + dolly - exitPull
     );
+
+    const camLerp = steadyCamera ? 0.1 : 0.075;
+    camera.position.lerp(cameraTarget.current, camLerp);
 
     lookTarget.current.set(
       lookX,

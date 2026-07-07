@@ -1,3 +1,5 @@
+import { smoothstep, clamp } from "./easing";
+
 export const MOVIE_CARDS = [
   { id: "spiderman", title: "Spider-Man", image: "/cards/spiderman.jpg" },
   { id: "aquaman", title: "Aquaman", image: "/cards/aquaman.jpg" },
@@ -19,20 +21,49 @@ export function getActiveItemIndex(progress, count) {
   return { index, segmentProgress };
 }
 
-/** Slower first movie + intro hold; used by portfolio / enhanced movies scene. */
+/**
+ * Enhanced Movies — pinned scroll with a dedicated hold window for the last poster
+ * so it does not get cut off when the next section crossfades in.
+ */
 export function getPortfolioItemIndex(progress, count) {
   const p = Math.min(0.999, Math.max(0, progress));
-  const introHold = 0.16;
+  const introHold = 0.1;
+  const lastHold = 0.22;
+
+  if (count <= 0) {
+    return { index: 0, segmentProgress: 1 };
+  }
+
+  if (count === 1) {
+    return { index: 0, segmentProgress: smoothstep(p) };
+  }
 
   if (p < introHold) {
     return {
       index: 0,
-      segmentProgress: (p / introHold) * 0.55,
+      segmentProgress: smoothstep(p / introHold) * 0.65,
     };
   }
 
-  const t = (p - introHold) / (1 - introHold);
-  const index = Math.min(count - 1, Math.floor(t * count));
-  const segmentProgress = t * count - index;
-  return { index, segmentProgress };
+  if (p >= 1 - lastHold) {
+    const local = (p - (1 - lastHold)) / lastHold;
+    return {
+      index: count - 1,
+      segmentProgress: 0.75 + smoothstep(local) * 0.25,
+    };
+  }
+
+  const midSpan = 1 - introHold - lastHold;
+  const t = clamp((p - introHold) / midSpan);
+  const midCount = count - 1;
+  const index = Math.min(midCount - 1, Math.floor(t * midCount));
+  const local = t * midCount - index;
+  const enter = smoothstep(Math.min(1, local / 0.18));
+  const exit =
+    local > 0.82 ? 1 - smoothstep((local - 0.82) / 0.18) : 1;
+
+  return {
+    index,
+    segmentProgress: Math.max(0.35, enter * exit),
+  };
 }

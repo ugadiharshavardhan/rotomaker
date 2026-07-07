@@ -3,7 +3,10 @@
 import dynamic from "next/dynamic";
 import { STORY_HYPERSPEED_OPTIONS } from "@/lib/storyHyperspeedOptions";
 
-const Hyperspeed = dynamic(() => import("./Hyperspeed"), { ssr: false });
+const Hyperspeed = dynamic(() => import("./Hyperspeed"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export function StoryHyperspeedBg() {
   return (

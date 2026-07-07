@@ -16,10 +16,11 @@ export function useScrollExperience(triggerRef, onProgress) {
     if (!trigger) return;
 
     const lenis = new Lenis({
-      duration: 0.72,
-      easing: (t) => 1 - Math.pow(1 - t, 3),
+      duration: 1.05,
+      easing: (t) => 1 - Math.pow(1 - t, 4),
       smoothWheel: true,
-      wheelMultiplier: 1.05,
+      wheelMultiplier: 0.78,
+      lerp: 0.085,
     });
 
     lenis.on("scroll", ScrollTrigger.update);
@@ -40,7 +41,7 @@ export function useScrollExperience(triggerRef, onProgress) {
           trigger,
           start: "top top",
           end: "bottom bottom",
-          scrub: 0.08,
+          scrub: 0.45,
           onUpdate: (self) => {
             onProgressRef.current?.(self.progress);
           },

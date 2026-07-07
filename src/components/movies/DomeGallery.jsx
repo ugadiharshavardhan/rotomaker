@@ -37,20 +37,25 @@ function buildItems(pool, seg) {
 
   const totalSlots = coords.length;
   if (pool.length === 0) {
-    return coords.map((c) => ({ ...c, src: "", alt: "" }));
-  }
-  if (pool.length > totalSlots) {
-    console.warn(
-      `[DomeGallery] Provided image count (${pool.length}) exceeds available tiles (${totalSlots}). Some images will not be shown.`
-    );
+    return coords.map((c) => ({ ...c, src: "", alt: "", title: "" }));
   }
 
   const normalizedImages = pool.map((image) => {
     if (typeof image === "string") {
-      return { src: image, alt: "" };
+      return { src: image.trim(), alt: "", title: "" };
     }
-    return { src: image.src || "", alt: image.alt || "" };
+    return {
+      src: (image.src || "").trim(),
+      alt: image.alt || "",
+      title: image.title || image.alt || "",
+    };
   });
+
+  if (normalizedImages.length > totalSlots) {
+    console.warn(
+      `[DomeGallery] Provided image count (${normalizedImages.length}) exceeds available tiles (${totalSlots}). Some images will not be shown.`
+    );
+  }
 
   const usedImages = Array.from(
     { length: totalSlots },
@@ -74,6 +79,7 @@ function buildItems(pool, seg) {
     ...c,
     src: usedImages[i].src,
     alt: usedImages[i].alt,
+    title: usedImages[i].title,
   }));
 }
 
@@ -181,7 +187,7 @@ export default function DomeGallery({
           basis = aspect >= 1.3 ? w : minDim;
       }
       let radius = basis * fit;
-      const heightGuard = seamless ? Math.min(h * 0.5, w * 0.44) : h * 0.38;
+      const heightGuard = seamless ? Math.min(h * 0.58, w * 0.52) : h * 0.38;
       radius = Math.min(radius, heightGuard);
       radius = clamp(radius, minRadius, maxRadius);
       lockedRadiusRef.current = Math.round(radius);
@@ -406,11 +412,15 @@ export default function DomeGallery({
     const animatingOverlay = document.createElement("div");
     animatingOverlay.className = "enlarge-closing";
     animatingOverlay.style.cssText = `position:absolute;left:${overlayRelativeToRoot.left}px;top:${overlayRelativeToRoot.top}px;width:${overlayRelativeToRoot.width}px;height:${overlayRelativeToRoot.height}px;z-index:9999;border-radius: var(--enlarge-radius, 32px);overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:all ${enlargeTransitionMs}ms ease-out;pointer-events:none;margin:0;transform:none;`;
-    const originalImg = overlay.querySelector("img");
+    const originalImg = overlay.querySelector(".enlarge__poster img, .enlarge img");
     if (originalImg) {
+      const posterClone = document.createElement("div");
+      posterClone.className = "enlarge__poster";
+      posterClone.style.cssText = "width:100%;height:100%;overflow:hidden;border-radius:var(--enlarge-radius, 8px);";
       const img = originalImg.cloneNode();
       img.style.cssText = "width:100%;height:100%;object-fit:cover;";
-      animatingOverlay.appendChild(img);
+      posterClone.appendChild(img);
+      animatingOverlay.appendChild(posterClone);
     }
     overlay.remove();
     rootRef.current.appendChild(animatingOverlay);
@@ -489,10 +499,14 @@ export default function DomeGallery({
   const openItemFromElement = useCallback(
     (el) => {
       if (openingRef.current) return;
+      const parent = el.parentElement;
+      const rawSrc = (parent?.dataset.src || el.querySelector("img")?.src || "").trim();
+      const rawTitle = (parent?.dataset.title || parent?.dataset.alt || "").trim();
+      if (!rawSrc) return;
+
       openingRef.current = true;
       openStartedAtRef.current = performance.now();
       lockScroll();
-      const parent = el.parentElement;
       focusedElRef.current = el;
       el.setAttribute("data-focused", "true");
       const offsetX = getDataNumber(parent, "offsetX", 0);
@@ -535,28 +549,57 @@ export default function DomeGallery({
       };
       el.style.visibility = "hidden";
       el.style.zIndex = 0;
+
+      const targetWidth = openedImageWidth || `${frameR.width}px`;
+      const targetHeight = openedImageHeight || `${frameR.height}px`;
+
       const overlay = document.createElement("div");
       overlay.className = "enlarge";
       overlay.style.position = "absolute";
-      overlay.style.left = `${frameR.left - mainR.left}px`;
-      overlay.style.top = `${frameR.top - mainR.top}px`;
-      overlay.style.width = `${frameR.width}px`;
-      overlay.style.height = `${frameR.height}px`;
       overlay.style.opacity = "0";
       overlay.style.zIndex = "30";
       overlay.style.willChange = "transform, opacity";
       overlay.style.transformOrigin = "top left";
       overlay.style.transition = `transform ${enlargeTransitionMs}ms ease, opacity ${enlargeTransitionMs}ms ease`;
-      const rawSrc = parent.dataset.src || el.querySelector("img")?.src || "";
+
+      const poster = document.createElement("div");
+      poster.className = "enlarge__poster";
+      poster.style.width = targetWidth;
+      poster.style.height = targetHeight;
+
       const img = document.createElement("img");
       img.src = rawSrc;
-      overlay.appendChild(img);
+      img.alt = rawTitle || "Movie poster";
+      img.referrerPolicy = "no-referrer";
+      img.decoding = "async";
+      poster.appendChild(img);
+      overlay.appendChild(poster);
+
+      if (rawTitle) {
+        const caption = document.createElement("p");
+        caption.className = "enlarge__title";
+        caption.textContent = rawTitle;
+        overlay.appendChild(caption);
+      }
+
       overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
       viewerRef.current.appendChild(overlay);
-      const tx0 = tileR.left - frameR.left;
-      const ty0 = tileR.top - frameR.top;
-      const sx0 = tileR.width / frameR.width;
-      const sy0 = tileR.height / frameR.height;
+      void overlay.offsetHeight;
+
+      const cardRect = overlay.getBoundingClientRect();
+      const cardWidth = cardRect.width || parseFloat(targetWidth) || frameR.width;
+      const cardHeight = cardRect.height || parseFloat(targetHeight) || frameR.height;
+      const centeredLeft = frameR.left - mainR.left + (frameR.width - cardWidth) / 2;
+      const centeredTop = frameR.top - mainR.top + (frameR.height - cardHeight) / 2;
+
+      overlay.style.left = `${centeredLeft}px`;
+      overlay.style.top = `${centeredTop}px`;
+      overlay.style.width = `${cardWidth}px`;
+
+      const tx0 = tileR.left - centeredLeft - mainR.left;
+      const ty0 = tileR.top - centeredTop - mainR.top;
+      const sx0 = tileR.width / cardWidth;
+      const sy0 = tileR.height / cardHeight;
 
       const validSx0 = isFinite(sx0) && sx0 > 0 ? sx0 : 1;
       const validSy0 = isFinite(sy0) && sy0 > 0 ? sy0 : 1;
@@ -569,39 +612,6 @@ export default function DomeGallery({
         overlay.style.transform = "translate(0px, 0px) scale(1, 1)";
         rootRef.current?.setAttribute("data-enlarging", "true");
       }, 16);
-
-      const wantsResize = openedImageWidth || openedImageHeight;
-      if (wantsResize) {
-        const onFirstEnd = (ev) => {
-          if (ev.propertyName !== "transform") return;
-          overlay.removeEventListener("transitionend", onFirstEnd);
-          const prevTransition = overlay.style.transition;
-          overlay.style.transition = "none";
-          const tempWidth = openedImageWidth || `${frameR.width}px`;
-          const tempHeight = openedImageHeight || `${frameR.height}px`;
-          overlay.style.width = tempWidth;
-          overlay.style.height = tempHeight;
-          const newRect = overlay.getBoundingClientRect();
-          overlay.style.width = `${frameR.width}px`;
-          overlay.style.height = `${frameR.height}px`;
-          void overlay.offsetWidth;
-          overlay.style.transition = `left ${enlargeTransitionMs}ms ease, top ${enlargeTransitionMs}ms ease, width ${enlargeTransitionMs}ms ease, height ${enlargeTransitionMs}ms ease`;
-          const centeredLeft = frameR.left - mainR.left + (frameR.width - newRect.width) / 2;
-          const centeredTop = frameR.top - mainR.top + (frameR.height - newRect.height) / 2;
-          requestAnimationFrame(() => {
-            overlay.style.left = `${centeredLeft}px`;
-            overlay.style.top = `${centeredTop}px`;
-            overlay.style.width = tempWidth;
-            overlay.style.height = tempHeight;
-          });
-          const cleanupSecond = () => {
-            overlay.removeEventListener("transitionend", cleanupSecond);
-            overlay.style.transition = prevTransition;
-          };
-          overlay.addEventListener("transitionend", cleanupSecond, { once: true });
-        };
-        overlay.addEventListener("transitionend", onFirstEnd);
-      }
     },
     [
       enlargeTransitionMs,
@@ -663,6 +673,8 @@ export default function DomeGallery({
                 key={`${it.x},${it.y},${i}`}
                 className="item"
                 data-src={it.src}
+                data-title={it.title}
+                data-alt={it.alt}
                 data-offset-x={it.x}
                 data-offset-y={it.y}
                 data-size-x={it.sizeX}
@@ -682,7 +694,7 @@ export default function DomeGallery({
                   onClick={onTileClick}
                   onPointerUp={onTilePointerUp}
                 >
-                  <DomeTileImage src={it.src} alt={it.alt} />
+                  <DomeTileImage src={it.src} alt={it.alt} title={it.title} />
                 </div>
               </div>
             ))}

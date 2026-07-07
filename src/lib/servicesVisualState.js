@@ -1,8 +1,9 @@
 import { VFX_SERVICES } from "@/lib/servicesData";
-import { getActiveItemIndex } from "@/lib/portfolioData";
+import { getServicesItemIndex } from "@/lib/statsScroll";
+import { smoothstep, clamp } from "@/lib/easing";
 
-export const SERVICES_INTRO_END = 0.1;
-export const SERVICES_WORDS_END = 0.1;
+export const SERVICES_INTRO_END = 0.36;
+export const SERVICES_WORDS_END = 0.36;
 
 export const SERVICES_INTRO_WORD = { key: "intro", text: "We Don't Just Edit.", type: "intro" };
 
@@ -11,16 +12,24 @@ export function getServicesIntroBgOpacity(progress, overlayOpacity = 1, studioFa
   if (progress < 0.02) return 0;
 
   if (progress < SERVICES_INTRO_END) {
-    const reveal = Math.min(1, (progress - 0.02) / 0.04);
+    const reveal = smoothstep(clamp((progress - 0.02) / 0.08));
     const fadeOut =
-      progress < SERVICES_INTRO_END * 0.82
+      progress < SERVICES_INTRO_END * 0.85
         ? 1
-        : 1 - (progress - SERVICES_INTRO_END * 0.82) / (SERVICES_INTRO_END * 0.18);
+        : 1 - smoothstep(clamp((progress - SERVICES_INTRO_END * 0.85) / (SERVICES_INTRO_END * 0.15)));
     return base * reveal * fadeOut;
   }
 
-  const exit = Math.max(0, 1 - (progress - SERVICES_INTRO_END) / 0.04);
+  const exit = 1 - smoothstep(clamp((progress - SERVICES_INTRO_END) / 0.1));
   return base * exit;
+}
+
+export function getServicesCardsBgOpacity(progress, overlayOpacity = 1, studioFade = 0) {
+  const base = overlayOpacity * (1 - studioFade * 0.5);
+  if (progress < SERVICES_INTRO_END * 0.78) return 0;
+
+  const fadeIn = smoothstep(clamp((progress - SERVICES_INTRO_END * 0.78) / 0.14));
+  return base * fadeIn;
 }
 
 export function getServicesVisualState(progress) {
@@ -30,7 +39,7 @@ export function getServicesVisualState(progress) {
     return {
       phase: "intro",
       wordProgress: p / SERVICES_INTRO_END,
-      orbitReveal: Math.min(1, p / 0.06),
+      orbitReveal: smoothstep(clamp(p / 0.08)),
       serviceIndex: 0,
       service: VFX_SERVICES[0],
       show3d: false,
@@ -38,7 +47,7 @@ export function getServicesVisualState(progress) {
   }
 
   const local = (p - SERVICES_WORDS_END) / (1 - SERVICES_WORDS_END);
-  const { index, segmentProgress } = getActiveItemIndex(local, VFX_SERVICES.length);
+  const { index, segmentProgress } = getServicesItemIndex(local, VFX_SERVICES.length);
   const service = VFX_SERVICES[index];
   const hasImages = Boolean(service.before && service.after);
 

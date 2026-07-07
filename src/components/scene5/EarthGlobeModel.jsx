@@ -63,9 +63,9 @@ export const EarthGlobeModel = forwardRef(function EarthGlobeModel({ children, .
 
     const material = new THREE.MeshStandardMaterial({
       map: earthMap,
-      roughness: 0.92,
-      metalness: 0.02,
-      envMapIntensity: 0.35,
+      roughness: 0.88,
+      metalness: 0.04,
+      envMapIntensity: 0.65,
     });
 
     const scale = getGlobeScaleFromGeometry(geometry);
@@ -79,7 +79,7 @@ export const EarthGlobeModel = forwardRef(function EarthGlobeModel({ children, .
   return (
     <EarthGlobeProvider radius={prepared.radius}>
       <group ref={ref} scale={prepared.scale} {...props}>
-        <mesh geometry={prepared.geometry} material={prepared.material} castShadow receiveShadow />
+        <mesh geometry={prepared.geometry} material={prepared.material} castShadow receiveShadow renderOrder={0} />
         {children}
       </group>
     </EarthGlobeProvider>
