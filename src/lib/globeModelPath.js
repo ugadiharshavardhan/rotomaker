@@ -28,12 +28,15 @@ export function getGlobeOrbitHandoff(progress) {
   return getGlobeApproach(progress) >= GLOBE_ORBIT_HANDOFF;
 }
 
-/** Horizontal layout — globe on the right (desktop), centered behind copy (mobile) */
+/**
+ * Globe stays fully in-frame on the right (desktop) or centered behind copy (mobile).
+ * worldX kept conservative so the sphere isn't clipped by the right edge.
+ */
 export const GLOBE_LAYOUT = {
-  mobile: { worldX: 0, worldY: -0.15, cameraX: 0, lookX: 0 },
-  tablet: { worldX: 1.15, worldY: -0.08, cameraX: -0.28, lookX: 0.14 },
-  laptop: { worldX: 3.05, worldY: 0, cameraX: -0.82, lookX: 0.44 },
-  desktop: { worldX: 4.05, worldY: 0, cameraX: -1, lookX: 0.56 },
+  mobile: { worldX: 0, worldY: -0.1, cameraX: 0, lookX: 0 },
+  tablet: { worldX: 0.85, worldY: -0.05, cameraX: -0.22, lookX: 0.12 },
+  laptop: { worldX: 1.85, worldY: 0, cameraX: -0.48, lookX: 0.28 },
+  desktop: { worldX: 2.15, worldY: 0, cameraX: -0.55, lookX: 0.32 },
 };
 
 function lerpLayout(a, b, t) {
@@ -64,10 +67,10 @@ export function getGlobeLayout(width) {
 }
 
 export function getGlobeResponsiveScale(width) {
-  if (width < 480) return 1.05;
-  if (width < 768) return 0.92;
-  if (width < 1024) return 0.78;
-  if (width < 1200) return 0.84;
-  if (width < 1440) return 0.88;
-  return 0.94;
+  if (width < 480) return 0.88;
+  if (width < 768) return 0.78;
+  if (width < 1024) return 0.68;
+  if (width < 1200) return 0.7;
+  if (width < 1440) return 0.72;
+  return 0.74;
 }

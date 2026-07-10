@@ -1,9 +1,11 @@
 "use client";
 
+import { useThree } from "@react-three/fiber";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 export function EarthGlobeEffects({ opacity = 1 }) {
-  if (opacity <= 0) return null;
+  const gl = useThree((s) => s.gl);
+  if (!gl || opacity <= 0) return null;
 
   return (
     <EffectComposer multisampling={0}>

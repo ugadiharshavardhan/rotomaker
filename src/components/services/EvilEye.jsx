@@ -14,7 +14,7 @@ function hexToVec3(hex) {
   ];
 }
 
-function generateNoiseTexture(size = 256) {
+function generateNoiseTexture(size = 192) {
   const data = new Uint8Array(size * size * 4);
 
   function hash(x, y, s) {
@@ -41,13 +41,13 @@ function generateNoiseTexture(size = 256) {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       let v = 0;
-      let amp = 0.4;
+      let amp = 0.42;
       let totalAmp = 0;
-      for (let o = 0; o < 8; o++) {
-        const f = 32 * (1 << o);
+      for (let o = 0; o < 6; o++) {
+        const f = 24 * (1 << o);
         v += amp * noise(x, y, f, o * 31);
         totalAmp += amp;
-        amp *= 0.65;
+        amp *= 0.62;
       }
       v /= totalAmp;
       v = (v - 0.5) * 2.2 + 0.5;
@@ -175,11 +175,12 @@ export default function EvilEye({
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
 
-    const noiseData = generateNoiseTexture(256);
+    const noiseSize = 192;
+    const noiseData = generateNoiseTexture(noiseSize);
     const noiseTexture = new Texture(gl, {
       image: noiseData,
-      width: 256,
-      height: 256,
+      width: noiseSize,
+      height: noiseSize,
       generateMipmaps: false,
       flipY: false,
     });
@@ -207,6 +208,8 @@ export default function EvilEye({
     let program;
 
     function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      renderer.dpr = dpr;
       renderer.setSize(container.offsetWidth, container.offsetHeight);
       if (program) {
         program.uniforms.uResolution.value = [

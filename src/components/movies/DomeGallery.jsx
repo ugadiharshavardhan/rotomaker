@@ -136,9 +136,8 @@ export default function DomeGallery({
     scrollLockedRef.current = true;
     document.body.classList.add("dg-scroll-lock");
   }, []);
-  const unlockScroll = useCallback(() => {
-    if (!scrollLockedRef.current) return;
-    if (rootRef.current?.getAttribute("data-enlarging") === "true") return;
+  const unlockScroll = useCallback((force = false) => {
+    if (!force && rootRef.current?.getAttribute("data-enlarging") === "true") return;
     scrollLockedRef.current = false;
     document.body.classList.remove("dg-scroll-lock");
   }, []);
@@ -392,7 +391,7 @@ export default function DomeGallery({
       focusedElRef.current = null;
       rootRef.current?.removeAttribute("data-enlarging");
       openingRef.current = false;
-      unlockScroll();
+      unlockScroll(true);
       return;
     }
     const currentRect = overlay.getBoundingClientRect();
@@ -455,12 +454,8 @@ export default function DomeGallery({
               el.style.transition = "";
               el.style.opacity = "";
               openingRef.current = false;
-              if (
-                !draggingRef.current &&
-                rootRef.current?.getAttribute("data-enlarging") !== "true"
-              ) {
-                document.body.classList.remove("dg-scroll-lock");
-              }
+              scrollLockedRef.current = false;
+              document.body.classList.remove("dg-scroll-lock");
             }, 300);
           });
         });

@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { CameraModel } from "./CameraModel";
 import { Lighting } from "./Lighting";
@@ -13,6 +12,7 @@ import {
   easeInOutCubic,
   getCameraPhase,
   getCameraZoom,
+  getLensFaceAmount,
   getVfxLocalProgress,
   shouldShowGlbCamera,
 } from "@/lib/cameraLens";
@@ -20,61 +20,88 @@ import { getCameraViewportLayout } from "@/lib/cameraLayout";
 
 function CameraOrbitRig({ scrollProgress }) {
   const { camera, size } = useThree();
-  const layout = getCameraViewportLayout(size.width);
+  const layout = getCameraViewportLayout(size.width, size.height);
   const dampedPos = useRef(new THREE.Vector3(0, 0.65, 7));
   const dampedLook = useRef(new THREE.Vector3(...CAMERA_LENS_TARGET));
   const dampedFov = useRef(45);
   const hasSnapped = useRef(false);
+  const lastSizeRef = useRef({ w: size.width, h: size.height });
+
+  if (lastSizeRef.current.w !== size.width || lastSizeRef.current.h !== size.height) {
+    lastSizeRef.current = { w: size.width, h: size.height };
+    hasSnapped.current = false;
+  }
 
   useFrame((_, delta) => {
     const zoom = getCameraZoom(scrollProgress);
-    const { dive } = getCameraPhase(scrollProgress);
-    const damp = 1 - Math.pow(0.001, delta);
+    const { dive, orbit } = getCameraPhase(scrollProgress);
+    const faceLens = getLensFaceAmount(scrollProgress);
+    const damp = 1 - Math.pow(faceLens > 0.2 ? 0.00006 : 0.0004, delta);
     const lens = new THREE.Vector3(...CAMERA_LENS_TARGET);
+    const modelCenter = new THREE.Vector3(0, layout.modelOffsetY ?? 0, 0);
+
+    const baseRadius =
+      (layout.orbitRadius ?? THREE.MathUtils.lerp(7, 4.2, easeInOutCubic(zoom))) *
+      (layout.orbitRadiusScale ?? 1);
+    const baseHeight =
+      (layout.orbitHeight ?? THREE.MathUtils.lerp(0.65, 0.32, zoom)) +
+      (layout.cameraHeightOffset ?? 0);
 
     let targetPos;
     let targetLook;
     let targetFov = 45;
 
     if (dive <= 0.001) {
-      const orbitAngle = zoom * Math.PI * 0.32;
-      const radius = layout.lockOrbitZoom
-        ? layout.orbitRadius * layout.orbitRadiusScale
-        : THREE.MathUtils.lerp(7, 4.2, easeInOutCubic(zoom)) * layout.orbitRadiusScale;
-      const height = layout.lockOrbitZoom
-        ? layout.orbitHeight + layout.cameraHeightOffset
-        : THREE.MathUtils.lerp(0.65, 0.32, zoom) + layout.cameraHeightOffset;
+      // Keep the view mostly frontal so the model's side→front turn is obvious
+      const maxAngle = layout.centerModel ? Math.PI * 0.03 : Math.PI * 0.05;
+      const orbitAngle = orbit * maxAngle * (1 - faceLens);
+      const radius = THREE.MathUtils.lerp(baseRadius, baseRadius * 0.9, faceLens);
+      const height = THREE.MathUtils.lerp(baseHeight, 0.34, faceLens);
 
       targetPos = new THREE.Vector3(
         Math.sin(orbitAngle) * radius,
         height,
         Math.cos(orbitAngle) * radius
       );
-      targetLook = lens.clone();
-      targetLook.y += layout.modelOffsetY * 0.35;
-      targetFov = layout.lockOrbitZoom
-        ? layout.orbitFov + layout.fovBoost
-        : THREE.MathUtils.lerp(45 + layout.fovBoost, 36 + layout.fovBoost, zoom);
+      targetLook = modelCenter.clone().lerp(lens, faceLens * 0.75);
+      targetFov =
+        layout.orbitFov != null
+          ? layout.orbitFov + (layout.fovBoost ?? 0)
+          : THREE.MathUtils.lerp(
+              45 + (layout.fovBoost ?? 0),
+              36 + (layout.fovBoost ?? 0),
+              zoom
+            );
     } else {
+      // Continuous push from the front-facing orbit into the lens — never sideways
       const eased = easeInCubic(dive);
-      const approach = new THREE.Vector3(0.12, 0.3, 3.4);
-      const atLens = new THREE.Vector3(0.06, 0.24, 1.75);
-      const through = new THREE.Vector3(0.02, 0.22, 0.35);
+      const front = new THREE.Vector3(0, 0.36, baseRadius * 0.92);
+      const approach = new THREE.Vector3(0.04, 0.34, 5.1);
+      const atLens = new THREE.Vector3(0.02, 0.3, 4.15);
+      const through = new THREE.Vector3(0.01, 0.26, 3.35);
 
-      if (eased < 0.5) {
-        const local = eased / 0.5;
+      if (eased < 0.35) {
+        const local = eased / 0.35;
+        targetPos = front.clone().lerp(approach, easeInOutCubic(local));
+        targetLook = lens.clone();
+        targetFov = THREE.MathUtils.lerp(
+          layout.orbitFov != null ? layout.orbitFov : 36,
+          32,
+          local
+        );
+      } else if (eased < 0.7) {
+        const local = (eased - 0.35) / 0.35;
         targetPos = approach.clone().lerp(atLens, easeInOutCubic(local));
         targetLook = lens.clone();
-        targetFov = THREE.MathUtils.lerp(36, 22, local);
+        targetFov = THREE.MathUtils.lerp(32, 28, local);
       } else {
-        const local = (eased - 0.5) / 0.5;
-        targetPos = atLens.clone().lerp(through, easeInCubic(local));
-        targetLook = new THREE.Vector3(0, 0.2, -10);
-        targetFov = THREE.MathUtils.lerp(22, 8, local);
+        const local = (eased - 0.7) / 0.3;
+        targetPos = atLens.clone().lerp(through, easeInOutCubic(local));
+        targetLook = lens.clone().lerp(new THREE.Vector3(0, 0.22, 0.4), local * 0.35);
+        targetFov = THREE.MathUtils.lerp(28, 24, local);
       }
     }
 
-    // Snap on mount / re-entry so size doesn't grow then settle
     if (!hasSnapped.current) {
       dampedPos.current.copy(targetPos);
       dampedLook.current.copy(targetLook);
@@ -98,7 +125,6 @@ function CameraOrbitRig({ scrollProgress }) {
 function CameraStudioContent({ scrollProgress, sceneOpacity, modelFade, dive }) {
   const { size } = useThree();
   const compactStudio = size.width < 768;
-  const isDev = process.env.NODE_ENV === "development";
 
   return (
     <>
@@ -111,18 +137,7 @@ function CameraStudioContent({ scrollProgress, sceneOpacity, modelFade, dive }) 
         scrollProgress={scrollProgress}
         opacity={sceneOpacity * modelFade}
       />
-      {isDev ? (
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.06}
-          enableZoom={false}
-          enablePan={false}
-          maxPolarAngle={Math.PI / 1.8}
-          minPolarAngle={Math.PI / 4}
-        />
-      ) : (
-        <CameraOrbitRig scrollProgress={scrollProgress} />
-      )}
+      <CameraOrbitRig scrollProgress={scrollProgress} />
       <Effects
         enabled={sceneOpacity > 0.15 && dive < 0.85}
         studio

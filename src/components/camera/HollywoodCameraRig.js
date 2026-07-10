@@ -28,12 +28,14 @@ function getBaseZ(globalProgress, scenes) {
   const p11 = scenes[10]?.progress ?? 0;
   const p12 = scenes[11]?.progress ?? 0;
   const p13 = scenes[12]?.progress ?? 0;
+  const introEnd = getSceneBounds(1).end;
+  const portfolioEnd = getSceneBounds(2).end;
 
-  if (globalProgress < 0.145) {
+  if (globalProgress < introEnd) {
     const enter = Math.min(1, scenes[0].progress / 0.2);
     return lerp(14, 6.5, enter) - scenes[0].progress * 2;
   }
-  if (globalProgress < 0.305) return lerp(6.5, 8, scenes[1].progress);
+  if (globalProgress < portfolioEnd) return lerp(6.5, 8, scenes[1].progress);
   if (globalProgress < getSceneBounds(3).end) return lerp(10, 7, p3);
   if (globalProgress < getSceneBounds(6).start + 0.04) return lerp(8, 6, p4);
   if (isGlobeScene(globalProgress)) {
@@ -49,7 +51,7 @@ function getBaseZ(globalProgress, scenes) {
 }
 
 function getBaseY(globalProgress, scenes) {
-  if (globalProgress < 0.145) {
+  if (globalProgress < getSceneBounds(1).end) {
     return lerp(2, 0.2, Math.min(1, scenes[0].progress / 0.2));
   }
   if (globalProgress >= getSceneBounds(13).start) {
@@ -60,7 +62,8 @@ function getBaseY(globalProgress, scenes) {
 }
 
 function getBaseX(globalProgress, scenes) {
-  if (globalProgress >= 0.145 && globalProgress < 0.305) {
+  const portfolio = getSceneBounds(2);
+  if (globalProgress >= portfolio.start && globalProgress < portfolio.end) {
     return 0;
   }
   if (isGlobeScene(globalProgress)) {
@@ -76,7 +79,8 @@ function isStoryScene(globalProgress) {
 }
 
 function isPortfolioScene(globalProgress) {
-  return globalProgress >= 0.145 && globalProgress < 0.305;
+  const { start, end } = getSceneBounds(2);
+  return globalProgress >= start && globalProgress < end;
 }
 
 export function HollywoodCameraRig({ sceneState }) {
@@ -112,8 +116,8 @@ export function HollywoodCameraRig({ sceneState }) {
 
     let baseZ = getBaseZ(globalProgress, scenes);
     if (globe) {
-      // Mobile: pull back so the centered earth reads as a full backdrop
-      baseZ = lerp(7.2, isMobileGlobe ? 9.6 : 8.4, globeSmooth);
+      // Pull back enough that the full globe stays inside the frame
+      baseZ = lerp(7.2, isMobileGlobe ? 10.2 : 9.4, globeSmooth);
     }
     const baseY = getBaseY(globalProgress, scenes);
     let baseX = getBaseX(globalProgress, scenes);

@@ -7,26 +7,37 @@ import Lenis from "lenis";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export function useScrollExperience(triggerRef, onProgress) {
+export function useScrollExperience(triggerRef, onProgress, enabled = true) {
   const onProgressRef = useRef(onProgress);
   onProgressRef.current = onProgress;
 
   useEffect(() => {
+    if (!enabled) return;
+
     const trigger = triggerRef.current;
     if (!trigger) return;
 
     const lenis = new Lenis({
-      duration: 1.05,
-      easing: (t) => 1 - Math.pow(1 - t, 4),
+      duration: 1.15,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
-      wheelMultiplier: 0.78,
-      lerp: 0.085,
+      wheelMultiplier: 0.82,
+      touchMultiplier: 1.35,
+      syncTouch: true,
+      lerp: 0.09,
+      autoRaf: false,
     });
 
     lenis.on("scroll", ScrollTrigger.update);
 
     let rafId;
     const raf = (time) => {
+      if (
+        document.body.classList.contains("dg-scroll-lock") &&
+        !document.querySelector(".sphere-root[data-enlarging='true'], .enlarge")
+      ) {
+        document.body.classList.remove("dg-scroll-lock");
+      }
       lenis.raf(time);
       rafId = requestAnimationFrame(raf);
     };
@@ -41,7 +52,7 @@ export function useScrollExperience(triggerRef, onProgress) {
           trigger,
           start: "top top",
           end: "bottom bottom",
-          scrub: 0.45,
+          scrub: 0.42,
           onUpdate: (self) => {
             onProgressRef.current?.(self.progress);
           },
@@ -49,12 +60,21 @@ export function useScrollExperience(triggerRef, onProgress) {
       }
     );
 
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        document.body.classList.remove("dg-scroll-lock");
+        ScrollTrigger.update();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.body.classList.remove("dg-scroll-lock");
       tween.kill();
       cancelAnimationFrame(rafId);
       lenis.destroy();
       ScrollTrigger.getAll().forEach((st) => st.kill());
     };
-  }, [triggerRef]);
+  }, [triggerRef, enabled]);
 }
-  

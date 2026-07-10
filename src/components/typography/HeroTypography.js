@@ -43,7 +43,6 @@ export function HeroTypography({ scene1Progress, scene1Opacity = 1 }) {
           </span>
         ))}
       </div>
-      <div className="hero-typography__glow" style={{ opacity: opacity * 0.6 }} />
     </div>
   );
 }

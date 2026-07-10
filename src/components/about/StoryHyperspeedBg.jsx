@@ -15,3 +15,7 @@ export function StoryHyperspeedBg() {
     </div>
   );
 }
+
+if (typeof window !== "undefined") {
+  void import("./Hyperspeed");
+}

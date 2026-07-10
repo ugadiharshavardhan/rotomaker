@@ -35,6 +35,7 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <head>
+        <link rel="preload" as="image" href="/got.jpg" fetchPriority="high" />
         {[CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH].map((href) => (
           <link key={href} rel="preload" href={href} as="fetch" crossOrigin="anonymous" />
         ))}

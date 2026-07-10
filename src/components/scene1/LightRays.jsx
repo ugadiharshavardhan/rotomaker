@@ -49,6 +49,7 @@ export default function LightRays({
   mouseInfluence = 0.1,
   noiseAmount = 0.0,
   distortion = 0.0,
+  forceVisible = false,
   className = "",
 }) {
   const containerRef = useRef(null);
@@ -59,17 +60,21 @@ export default function LightRays({
   const animationIdRef = useRef(null);
   const meshRef = useRef(null);
   const cleanupFunctionRef = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
   const observerRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(forceVisible);
 
   useEffect(() => {
+    if (forceVisible) {
+      setIsVisible(true);
+      return;
+    }
     if (!containerRef.current) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
         setIsVisible(entries[0].isIntersecting);
       },
-      { threshold: 0.1 }
+      { threshold: 0 }
     );
 
     observerRef.current.observe(containerRef.current);
@@ -78,7 +83,7 @@ export default function LightRays({
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
-  }, []);
+  }, [forceVisible]);
 
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
@@ -91,13 +96,20 @@ export default function LightRays({
     const initializeWebGL = async () => {
       if (!containerRef.current || cancelled) return;
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait a couple frames so a just-unmounted R3F canvas can release its context.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       if (!containerRef.current || cancelled) return;
 
-      const renderer = createOglRenderer({
-        dpr: Math.min(window.devicePixelRatio, 2),
-        alpha: true,
-      });
+      let renderer = null;
+      for (let attempt = 0; attempt < 4 && !renderer; attempt++) {
+        renderer = createOglRenderer({
+          dpr: Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.5 : 2),
+          alpha: true,
+        });
+        if (!renderer) {
+          await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+        }
+      }
 
       if (!renderer || cancelled || !containerRef.current) {
         disposeOglCanvas(renderer);
@@ -248,9 +260,11 @@ void main() {
       const updatePlacement = () => {
         if (!containerRef.current || !renderer) return;
 
-        renderer.dpr = Math.min(window.devicePixelRatio, 2);
+        renderer.dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.5 : 2);
 
         const { clientWidth: wCSS, clientHeight: hCSS } = containerRef.current;
+        if (wCSS < 2 || hCSS < 2) return;
+
         renderer.setSize(wCSS, hCSS);
 
         const dpr = renderer.dpr;
@@ -287,6 +301,12 @@ void main() {
       };
 
       window.addEventListener("resize", updatePlacement);
+      const resizeObserver =
+        typeof ResizeObserver !== "undefined"
+          ? new ResizeObserver(() => updatePlacement())
+          : null;
+      resizeObserver?.observe(containerRef.current);
+
       updatePlacement();
       animationIdRef.current = requestAnimationFrame(loop);
 
@@ -297,6 +317,7 @@ void main() {
         }
 
         window.removeEventListener("resize", updatePlacement);
+        resizeObserver?.disconnect();
         disposeOglCanvas(renderer);
 
         rendererRef.current = null;
@@ -351,17 +372,24 @@ void main() {
   ]);
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handlePointerMove = (e) => {
       if (!containerRef.current) return;
+      const point = e.touches?.[0] ?? e;
+      if (point?.clientX == null) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
+      if (rect.width < 1 || rect.height < 1) return;
+      const x = (point.clientX - rect.left) / rect.width;
+      const y = (point.clientY - rect.top) / rect.height;
       mouseRef.current = { x, y };
     };
 
     if (followMouse) {
-      window.addEventListener("mousemove", handleMouseMove);
-      return () => window.removeEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mousemove", handlePointerMove, { passive: true });
+      window.addEventListener("touchmove", handlePointerMove, { passive: true });
+      return () => {
+        window.removeEventListener("mousemove", handlePointerMove);
+        window.removeEventListener("touchmove", handlePointerMove);
+      };
     }
   }, [followMouse]);
 

@@ -7,7 +7,7 @@ import { sectionReveal } from "@/lib/easing";
 import { MagneticButton } from "@/components/interactions/MagneticButton";
 import { ReelCircularGallery } from "@/components/scene6/ReelCircularGallery";
 
-export function Scene6Overlay({ progress, opacity = 1 }) {
+export function Scene6Overlay({ progress, opacity = 1, forceMount = false }) {
   const [hoveredId, setHoveredId] = useState(null);
   const reveal = sectionReveal(progress, 0.2);
   const count = PORTFOLIO.length;
@@ -16,10 +16,20 @@ export function Scene6Overlay({ progress, opacity = 1 }) {
   const hovered = hoveredId ? PORTFOLIO.find((p) => p.id === hoveredId) : null;
   const display = hovered ?? active;
 
-  if (opacity <= 0) return null;
+  if (!forceMount && opacity <= 0) return null;
+
+  const visible = opacity > 0.01;
 
   return (
-    <div className="scene6-overlay scene-interactive-layer" style={{ opacity }}>
+    <div
+      className="scene6-overlay scene-interactive-layer"
+      style={{
+        opacity: visible ? opacity : 0,
+        pointerEvents: visible ? undefined : "none",
+        visibility: visible ? "visible" : "hidden",
+      }}
+      aria-hidden={!visible}
+    >
       <header className="scene6-header" style={{ opacity: reveal }}>
         <p className="scene6-eyebrow">Selected Work</p>
         <h2 className="scene6-title">Production Reel</h2>

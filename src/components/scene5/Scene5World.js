@@ -11,8 +11,8 @@ import {
 import { EarthGlobeModel } from "./EarthGlobeModel";
 import { EarthGlobeEffects } from "./EarthGlobeEffects";
 
-const GLOBE_LOCKED_SCALE = 0.92;
-const GLOBE_FAR_SCALE = 0.22;
+const GLOBE_LOCKED_SCALE = 0.78;
+const GLOBE_FAR_SCALE = 0.2;
 const APPROACH_LERP = 0.048;
 const SETTLE_LERP = 0.07;
 const GLOBE_FACE_YAW = -0.55;

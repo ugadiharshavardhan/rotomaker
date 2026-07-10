@@ -5,19 +5,19 @@ import { getStatItemIndex, getAboutPanelIndex } from "./statsScroll";
 import { clamp, crossfadeOpacity } from "./easing";
 
 export const SCENES = [
-  { id: 1, name: "intro", start: 0, end: 0.145 },
-  { id: 2, name: "portfolio", start: 0.145, end: 0.338 },
-  { id: 3, name: "services", start: 0.318, end: 0.525 },
-  { id: 4, name: "pipeline", start: 0.52, end: 0.52 },
-  { id: 5, name: "services-words", start: 0.52, end: 0.52 },
-  { id: 6, name: "globe", start: 0.515, end: 0.608 },
-  { id: 7, name: "portfolio-reel", start: 0.592, end: 0.692 },
-  { id: 8, name: "movies-library", start: 0.678, end: 0.862 },
-  { id: 9, name: "beforeafter", start: 0.844, end: 0.898 },
-  { id: 10, name: "stats", start: 0.884, end: 0.944 },
-  { id: 11, name: "about", start: 0.928, end: 0.976 },
-  { id: 12, name: "why", start: 0.966, end: 0.994 },
-  { id: 13, name: "cta", start: 0.982, end: 1.0 },
+  { id: 1, name: "intro", start: 0, end: 0.235 },
+  { id: 2, name: "portfolio", start: 0.22, end: 0.395 },
+  { id: 3, name: "services", start: 0.375, end: 0.555 },
+  { id: 4, name: "pipeline", start: 0.55, end: 0.55 },
+  { id: 5, name: "services-words", start: 0.55, end: 0.55 },
+  { id: 6, name: "globe", start: 0.545, end: 0.628 },
+  { id: 7, name: "portfolio-reel", start: 0.612, end: 0.705 },
+  { id: 8, name: "movies-library", start: 0.69, end: 0.855 },
+  { id: 9, name: "beforeafter", start: 0.838, end: 0.888 },
+  { id: 10, name: "stats", start: 0.875, end: 0.93 },
+  { id: 11, name: "about", start: 0.91, end: 0.955 },
+  { id: 12, name: "why", start: 0.94, end: 0.975 },
+  { id: 13, name: "cta", start: 0.96, end: 1.0 },
 ];
 
 export const SCENE4_WORDS = [

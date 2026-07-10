@@ -1,21 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { getSceneState, getActiveSceneOpacity, getStoryOverlayOpacity, getSceneBounds } from "@/lib/sceneConfig";
-import { EXPERIENCE_IMAGE_URLS } from "@/lib/imagePreload";
-import { warmImageCache } from "@/lib/moviesImageCache";
 import { useScrollExperience } from "@/hooks/useScrollExperience";
-import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress, getCameraPhase, STUDIO_BACKDROP, HERO_END } from "@/lib/cameraLens";
-import { ExperienceAssetPreloader } from "@/components/preload/ExperienceAssetPreloader";
+import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress, getCameraPhase, STUDIO_BACKDROP } from "@/lib/cameraLens";
+import { waitForExperienceReady } from "@/lib/experienceAssetPreload";
+import { ExperienceLoadingScreen } from "@/components/preload/ExperienceLoadingScreen";
+import { ExperienceWarmLayer } from "@/components/preload/ExperienceWarmLayer";
+import { ServicesGradientBlindsBg } from "@/components/services/ServicesGradientBlindsBg";
 import { ScrollPulseLayer } from "./ScrollPulseLayer";
 import { HeroTypography } from "@/components/typography/HeroTypography";
 import { TrackingCursor } from "@/components/interactions/TrackingCursor";
 import { ParallaxBackground } from "@/components/interactions/ParallaxBackground";
 import { HeroBrand } from "@/components/scene1/HeroBrand";
-import { HeroLightRays } from "@/components/scene1/HeroLightRays";
 import { HangingSpiderMan } from "@/components/scene1/HangingSpiderMan";
-import { HeroDragon } from "@/components/scene1/HeroDragon";
 import { LensPortalOverlay } from "@/components/scene1/LensPortalOverlay";
 import { CameraSectionOverlay } from "@/components/scene1/CameraSectionOverlay";
 import { SoundWaveIndicator } from "@/components/scene1/SoundWaveIndicator";
@@ -25,8 +24,7 @@ import { ServiceImagePreloader } from "@/components/scene2/ServiceImagePreloader
 import { ExperienceImagePreloader } from "@/components/ExperienceImagePreloader";
 import { ServicesSection } from "@/components/scene2/ServicesSection";
 import { ServicesEvilEyeBg } from "@/components/services/ServicesEvilEyeBg";
-import { ServicesGradientBlindsBg } from "@/components/services/ServicesGradientBlindsBg";
-import { getServicesCardsBgOpacity, getServicesIntroBgOpacity } from "@/lib/servicesVisualState";
+import { getServicesIntroBgOpacity, getServicesCardsBgOpacity } from "@/lib/servicesVisualState";
 import { Scene4Overlay } from "@/components/scene4/Scene4Overlay";
 import { Scene5Overlay } from "@/components/scene5/Scene5Overlay";
 import { Scene6Overlay } from "@/components/scene6/Scene6Overlay";
@@ -47,16 +45,59 @@ export default function MainExperience() {
   const triggerRef = useRef(null);
   const [globalProgress, setGlobalProgress] = useState(0);
   const [mouse, setMouse] = useState({ x: 0.5, y: 0.5 });
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [gpuReady, setGpuReady] = useState(false);
+  const [effectsReady, setEffectsReady] = useState(false);
+  const ready = assetsReady && gpuReady && effectsReady;
 
   const handleProgress = useCallback((value) => {
     setGlobalProgress(value);
   }, []);
 
-  useScrollExperience(triggerRef, handleProgress);
-
-  useLayoutEffect(() => {
-    void warmImageCache(EXPERIENCE_IMAGE_URLS);
+  const handleGlbWarm = useCallback(() => {
+    setGpuReady(true);
   }, []);
+
+  const handleEffectsWarm = useCallback(() => {
+    setEffectsReady(true);
+  }, []);
+
+  useScrollExperience(triggerRef, handleProgress, ready);
+
+  useEffect(() => {
+    let cancelled = false;
+    document.body.classList.add("experience-loading");
+    document.documentElement.classList.add("experience-loading");
+
+    void waitForExperienceReady((value) => {
+      if (!cancelled) setLoadProgress(value);
+    }).then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+
+    // Safety: never trap the user if GPU / effect warm hangs.
+    const safety = window.setTimeout(() => {
+      if (!cancelled) {
+        setAssetsReady(true);
+        setGpuReady(true);
+        setEffectsReady(true);
+      }
+    }, 60000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(safety);
+      document.body.classList.remove("experience-loading");
+      document.documentElement.classList.remove("experience-loading");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    document.body.classList.remove("experience-loading");
+    document.documentElement.classList.remove("experience-loading");
+  }, [ready]);
 
   useEffect(() => {
     const onMove = (e) => {
@@ -69,9 +110,23 @@ export default function MainExperience() {
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
+  // Never leave movies scroll-lock stuck — it blocks scrolling mid-experience.
+  useEffect(() => {
+    const movies = getSceneBounds(8);
+    const inMovies =
+      globalProgress >= movies.start && globalProgress < movies.end;
+    if (!inMovies) {
+      document.body.classList.remove("dg-scroll-lock");
+    }
+  }, [globalProgress]);
+
   const sceneState = useMemo(
-    () => getSceneState(globalProgress),
-    [globalProgress]
+    () => ({
+      ...getSceneState(globalProgress),
+      onGlbWarm: handleGlbWarm,
+      forceWarmWorlds: !ready,
+    }),
+    [globalProgress, handleGlbWarm, ready]
   );
 
   const { scenes, microBeat } = sceneState;
@@ -139,7 +194,7 @@ export default function MainExperience() {
 
   const contactOpacity =
     globalProgress >= ctaSceneStart
-      ? getStoryOverlayOpacity(globalProgress, 13, 0.018)
+      ? getStoryOverlayOpacity(globalProgress, 13, 0.028)
       : 0;
 
   const storyHyperspeedOpacity =
@@ -150,28 +205,57 @@ export default function MainExperience() {
     overlay3,
     studioFade
   );
-
-  const servicesGradientBlindsOpacity = getServicesCardsBgOpacity(
+  const servicesCardsBgOpacity = getServicesCardsBgOpacity(
     scene3.progress,
     overlay3,
     studioFade
   );
 
-  const shouldMountExperienceCanvas =
-    scene1.progress >= HERO_END || activeSceneId > 1 || globalProgress >= 0.12;
+  // Keep heavy background effects mounted after boot so sections never cold-start.
+  const mountEvilEye = assetsReady || ready;
+  const mountHyperspeed = assetsReady || ready;
+  const mountGradientBlinds = assetsReady || ready;
+  const keepGalleriesMounted = assetsReady || ready;
+
+  // During boot, keep galleries/overlays mounted (hidden under loader) so WebGL inits once.
+  const bootWarm = (value) => (!ready ? Math.max(value, 0.02) : value);
+
+  // Keep the experience canvas mounted — remounting EffectComposer crashes with null gl.
+  // Mount during loading so GlbWarmup can decode models into GPU memory.
+  const shouldMountExperienceCanvas = true;
+
+  const displayLoadProgress = ready
+    ? 1
+    : effectsReady
+      ? Math.max(loadProgress, 0.99)
+      : assetsReady
+        ? Math.max(loadProgress, 0.94)
+        : loadProgress;
 
   return (
     <>
-      <ExperienceAssetPreloader />
-      <TrackingCursor enabled={globalProgress < moviesSceneStart} />
-      <PortfolioImagePreloader />
-      <ServiceImagePreloader />
-      <ExperienceImagePreloader />
+      {!ready && <ExperienceLoadingScreen progress={displayLoadProgress} />}
+
+      <ExperienceWarmLayer
+        active={assetsReady && gpuReady && !effectsReady}
+        onReady={handleEffectsWarm}
+      />
+
+      <TrackingCursor enabled={ready && globalProgress < moviesSceneStart} />
+      {(ready || assetsReady) && (
+        <>
+          <PortfolioImagePreloader />
+          <ServiceImagePreloader />
+          <ExperienceImagePreloader />
+        </>
+      )}
 
       <div
         className={`scene-fixed${isInteractive ? " scene-fixed--interactive" : ""}${isVfxSection ? " scene-fixed--camera" : ""}${cameraDive > 0.02 ? " scene-fixed--camera-dive" : ""}${isGlobeSection ? " scene-fixed--globe" : ""}`}
         aria-label="Rotomaker cinematic experience"
         style={{
+          opacity: ready ? 1 : 0,
+          pointerEvents: ready ? undefined : "none",
           filter:
             microBeat.effect === "depth"
               ? `brightness(${1 + microBeat.beatProgress * 0.03})`
@@ -195,7 +279,10 @@ export default function MainExperience() {
         <div
           className={`scene-canvas-wrap${sceneState.activeScene.id === 2 ? " scene-canvas-wrap--portfolio-content" : ""}`}
           style={{
-            opacity: isPureHero || activeSceneId === 2 || activeSceneId === 7 ? 0 : 1,
+            opacity:
+              isPureHero || activeSceneId === 2 || activeSceneId === 7
+                ? 0
+                : 1,
             transition: "opacity 0.65s ease",
           }}
         >
@@ -223,7 +310,6 @@ export default function MainExperience() {
           />
         )}
 
-        <HeroLightRays progress={scene1.progress} />
         <HeroBrand progress={scene1.progress} />
 
         <HeroTypography scene1Progress={scene1.progress} scene1Opacity={scene1.opacity} />
@@ -233,7 +319,6 @@ export default function MainExperience() {
         )}
 
         <HangingSpiderMan progress={scene1.progress} />
-        <HeroDragon progress={scene1.progress} />
 
         {isVfxSection && <LensPortalOverlay progress={scene1.progress} />}
         <CameraSectionOverlay progress={scene1.progress} />
@@ -243,7 +328,7 @@ export default function MainExperience() {
           opacity={overlay2 * (1 - studioFade * 0.5)}
         />
 
-        {servicesEvilEyeOpacity > 0.01 && (
+        {mountEvilEye && (
           <div
             className="services-evil-eye-layer"
             style={{ opacity: servicesEvilEyeOpacity }}
@@ -253,10 +338,10 @@ export default function MainExperience() {
           </div>
         )}
 
-        {servicesGradientBlindsOpacity > 0.01 && (
+        {mountGradientBlinds && (
           <div
             className="services-gradient-blinds-layer"
-            style={{ opacity: servicesGradientBlindsOpacity }}
+            style={{ opacity: servicesCardsBgOpacity }}
             aria-hidden="true"
           >
             <ServicesGradientBlindsBg />
@@ -271,15 +356,23 @@ export default function MainExperience() {
         <Scene4Overlay scene4={sceneState.scene4} opacity={overlay4 * (1 - studioFade * 0.5)} />
 
         <Scene5Overlay progress={scene6.progress} opacity={overlayGlobe * (1 - studioFade * 0.5)} />
-        <Scene6Overlay progress={scene7.progress} opacity={overlayReel * (1 - studioFade * 0.5)} />
-        <MoviesLibrarySection progress={scene7b.progress} opacity={overlayMovies * (1 - studioFade * 0.5)} />
+        <Scene6Overlay
+          progress={scene7.progress}
+          opacity={bootWarm(overlayReel * (1 - studioFade * 0.5))}
+          forceMount={keepGalleriesMounted}
+        />
+        <MoviesLibrarySection
+          progress={scene7b.progress}
+          opacity={bootWarm(overlayMovies * (1 - studioFade * 0.5))}
+          forceMount={keepGalleriesMounted}
+        />
         <Scene8Overlay progress={scene8.progress} opacity={overlayVfx * (1 - studioFade * 0.5)} />
         <Scene9Overlay scene9={sceneState.scene9} opacity={overlayStats * (1 - studioFade * 0.5)} />
 
-        {storyHyperspeedOpacity > 0.01 && (
+        {mountHyperspeed && (
           <div
             className="story-hyperspeed-layer"
-            style={{ opacity: storyHyperspeedOpacity }}
+            style={{ opacity: bootWarm(storyHyperspeedOpacity) > 0.02 ? storyHyperspeedOpacity : 0 }}
             aria-hidden="true"
           >
             <StoryHyperspeedBg />
@@ -304,7 +397,12 @@ export default function MainExperience() {
         </div>
       </div>
 
-      <section ref={triggerRef} className="scroll-spacer experience-scroll" aria-hidden="true" />
+      <section
+        ref={triggerRef}
+        className="scroll-spacer experience-scroll"
+        aria-hidden="true"
+        style={{ visibility: ready ? "visible" : "hidden" }}
+      />
     </>
   );
 }

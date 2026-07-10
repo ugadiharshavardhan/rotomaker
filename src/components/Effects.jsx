@@ -1,5 +1,6 @@
 "use client";
 
+import { useThree } from "@react-three/fiber";
 import {
   EffectComposer,
   Bloom,
@@ -9,7 +10,8 @@ import {
 import { BlendFunction } from "postprocessing";
 
 export function Effects({ enabled = true, studio = false }) {
-  if (!enabled) return null;
+  const gl = useThree((s) => s.gl);
+  if (!enabled || !gl) return null;
 
   if (studio) {
     return (

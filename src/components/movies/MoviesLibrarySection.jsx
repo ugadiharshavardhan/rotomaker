@@ -66,7 +66,7 @@ function CategoryDome({ category, minRadius, isMobile }) {
   );
 }
 
-export function MoviesLibrarySection({ progress, opacity = 1 }) {
+export function MoviesLibrarySection({ progress, opacity = 1, forceMount = false }) {
   const [minRadius, setMinRadius] = useState(560);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -91,16 +91,25 @@ export function MoviesLibrarySection({ progress, opacity = 1 }) {
     return undefined;
   }, [opacity]);
 
-  if (opacity <= 0.01) return null;
+  if (!forceMount && opacity <= 0.01) return null;
 
   const { index, opacity: panelOpacity } = getMoviesPanelIndex(
     progress,
     MOVIE_LIBRARY_PANELS.length
   );
   const panel = MOVIE_LIBRARY_PANELS[index];
+  const visible = opacity > 0.01;
 
   return (
-    <section className="story-flow movies-flow" style={{ opacity }}>
+    <section
+      className="story-flow movies-flow"
+      style={{
+        opacity: visible ? opacity : 0,
+        pointerEvents: visible ? undefined : "none",
+        visibility: visible ? "visible" : "hidden",
+      }}
+      aria-hidden={!visible}
+    >
       <div className="movies-flow__topbar">
         <p className="scene9-eyebrow movies-flow__eyebrow">Our Movies</p>
         <div className="movies-flow__index">

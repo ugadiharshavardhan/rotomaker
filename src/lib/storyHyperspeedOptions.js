@@ -5,7 +5,11 @@ const { colors, ...rest } = hyperspeedPresets.one;
 
 export const STORY_HYPERSPEED_OPTIONS = {
   ...rest,
-  lanesPerRoad: 4,
+  lanesPerRoad: 3,
+  // Leaner particle counts for faster init on mobile / production
+  totalSideLightSticks: 12,
+  lightPairsPerRoadWay: 22,
+  carLightsFade: 0.45,
   colors: {
     ...colors,
     background: 0x030303,

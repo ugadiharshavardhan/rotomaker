@@ -27,6 +27,7 @@ export function collectExperienceImageUrls() {
 
   urls.add("/vfx/vfx-after.png");
   urls.add("/vfx/vfx-brfore.png");
+  urls.add("/got.jpg");
 
   return [...urls];
 }
