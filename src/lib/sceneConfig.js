@@ -6,18 +6,18 @@ import { clamp, crossfadeOpacity } from "./easing";
 
 export const SCENES = [
   { id: 1, name: "intro", start: 0, end: 0.235 },
-  { id: 2, name: "portfolio", start: 0.22, end: 0.395 },
-  { id: 3, name: "services", start: 0.375, end: 0.555 },
-  { id: 4, name: "pipeline", start: 0.55, end: 0.55 },
-  { id: 5, name: "services-words", start: 0.55, end: 0.55 },
-  { id: 6, name: "globe", start: 0.545, end: 0.628 },
-  { id: 7, name: "portfolio-reel", start: 0.612, end: 0.705 },
-  { id: 8, name: "movies-library", start: 0.69, end: 0.855 },
-  { id: 9, name: "beforeafter", start: 0.838, end: 0.888 },
-  { id: 10, name: "stats", start: 0.875, end: 0.93 },
-  { id: 11, name: "about", start: 0.91, end: 0.955 },
-  { id: 12, name: "why", start: 0.94, end: 0.975 },
-  { id: 13, name: "cta", start: 0.96, end: 1.0 },
+  { id: 2, name: "portfolio", start: 0.22, end: 0.385 },
+  { id: 3, name: "services", start: 0.365, end: 0.505 },
+  { id: 4, name: "pipeline", start: 0.5, end: 0.5 },
+  { id: 5, name: "services-words", start: 0.5, end: 0.5 },
+  { id: 6, name: "globe", start: 0.495, end: 0.595 },
+  { id: 7, name: "portfolio-reel", start: 0.58, end: 0.68 },
+  { id: 8, name: "movies-library", start: 0.665, end: 0.82 },
+  { id: 9, name: "beforeafter", start: 0.805, end: 0.86 },
+  { id: 10, name: "stats", start: 0.845, end: 0.905 },
+  { id: 11, name: "about", start: 0.89, end: 0.94 },
+  { id: 12, name: "why", start: 0.925, end: 0.965 },
+  { id: 13, name: "cta", start: 0.95, end: 1.0 },
 ];
 
 export const SCENE4_WORDS = [
@@ -54,7 +54,7 @@ export const GLOBE_LOCATIONS = [
   },
 ];
 
-export const SCROLL_HEIGHT_VH = 2400;
+export const SCROLL_HEIGHT_VH = 1600;
 
 export function getSceneBounds(sceneId) {
   const scene = SCENES.find((s) => s.id === sceneId);

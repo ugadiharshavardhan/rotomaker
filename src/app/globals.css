@@ -245,7 +245,7 @@ body.experience-loading {
 }
 
 .experience-scroll {
-  height: 1900vh;
+  height: 1550vh;
 }
 
 .scene-fixed--interactive .scene-interactive-layer {
@@ -692,11 +692,6 @@ body.experience-cursor * {
 
 /* ── Scene 1 hanging elements (camera + spider-man) ── */
 
-@keyframes scene1-pendulum {
-  0%, 100% { transform: rotate(-6deg); }
-  50% { transform: rotate(6deg); }
-}
-
 @keyframes spider-drop-in {
   0% {
     transform: translateY(-105vh);
@@ -763,16 +758,15 @@ body.experience-cursor * {
 @keyframes spider-float {
   0%,
   100% {
-    transform: translateY(0) rotate(-1deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(8px) rotate(1.5deg);
+    transform: translateY(8px);
   }
 }
 
 .hanging-spider__swing {
   transform-origin: top center;
-  animation: scene1-pendulum 3.8s ease-in-out 2.4s infinite;
 }
 
 .hanging-spider__rig {

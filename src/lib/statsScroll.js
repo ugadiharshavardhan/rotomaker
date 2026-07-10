@@ -66,9 +66,9 @@ export function getPinnedSegmentIndex(progress, count, options = {}) {
 /** Services cards — one VFX service at a time. */
 export function getServicesItemIndex(progress, count) {
   return getPinnedSegmentIndex(progress, count, {
-    introHold: 0.06,
-    animPortion: 0.14,
-    holdEnd: 0.84,
+    introHold: 0.04,
+    animPortion: 0.18,
+    holdEnd: 0.78,
     motionAmount: 16,
   });
 }

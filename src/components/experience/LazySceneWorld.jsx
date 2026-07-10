@@ -1,10 +1,25 @@
 "use client";
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
+/**
+ * Keep a world mounted after first visit so scrolling back/forward
+ * doesn't pay chunk + GPU compile cost again.
+ */
 export function LazyWorld({ active, children }) {
-  if (!active) return null;
-  return <Suspense fallback={null}>{children}</Suspense>;
+  const [warmed, setWarmed] = useState(active);
+
+  useEffect(() => {
+    if (active) setWarmed(true);
+  }, [active]);
+
+  if (!active && !warmed) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <group visible={active}>{children}</group>
+    </Suspense>
+  );
 }
 
 export function makeLazyWorld(loader) {

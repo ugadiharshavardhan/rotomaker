@@ -8,7 +8,7 @@ import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
 import { EARTH_GLB_PATH } from "@/lib/globeModelPath";
 import { DRAGON_GLB_PATH } from "@/lib/dragonModelPath";
 
-/** Heavy UI / WebGL effect modules that must be ready before intro. */
+/** Heavy UI / WebGL effect modules — prefetch in background, never block first paint. */
 export const EFFECT_CHUNK_LOADERS = [
   () => import("@/components/services/EvilEye"),
   () => import("@/components/about/Hyperspeed"),
@@ -24,14 +24,13 @@ export const EFFECT_CHUNK_LOADERS = [
   () => import("@/components/scene6/ReelCircularGallery"),
 ];
 
-/** Priority chunks — canvas + camera path. */
+/** Priority chunks required before intro — keep this list small. */
 const PRIORITY_CHUNK_LOADERS = [
   () => import("@/components/experience/UnifiedCanvas"),
   () => import("@/components/Scene"),
   () => import("@/components/CameraModel"),
   () => import("@/components/Lighting"),
   () => import("@/components/Effects"),
-  ...EFFECT_CHUNK_LOADERS,
 ];
 
 const CHUNK_LOADERS = [
@@ -60,6 +59,7 @@ const CHUNK_LOADERS = [
   () => import("@/components/scene1/HangingSpiderMan"),
   () => import("@/components/scene1/HeroBrand"),
   () => import("@/components/typography/HeroTypography"),
+  ...EFFECT_CHUNK_LOADERS,
 ];
 
 export const EXPERIENCE_GLB_PATHS = [CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH];
@@ -103,7 +103,13 @@ async function ensureGlbLoaded(url) {
 export function preloadExperienceGlbs() {
   if (glbPreloadStarted || typeof window === "undefined") return;
   glbPreloadStarted = true;
-  EXPERIENCE_GLB_PATHS.forEach((path) => useGLTF.preload(path));
+  EXPERIENCE_GLB_PATHS.forEach((path) => {
+    try {
+      useGLTF.preload(path);
+    } catch {
+      // Ignore preload registration failures.
+    }
+  });
 }
 
 /** Warm HTTP cache for GLBs (camera first). */
@@ -114,15 +120,45 @@ export function warmGlbHttpCache() {
   });
 }
 
-/** Prefetch heavy JS chunks — priority effects first, then the rest. */
+/** Prefetch heavy JS chunks — priority first, then nearby scenes, then the rest. */
 export function prefetchExperienceChunks() {
   if (chunkPrefetchStarted) return chunkPrefetchPromise;
   chunkPrefetchStarted = true;
 
   chunkPrefetchPromise = Promise.allSettled(PRIORITY_CHUNK_LOADERS.map((load) => load())).then(
-    () => Promise.allSettled(CHUNK_LOADERS.map((load) => load()))
+    async () => {
+      // Warm the next sections first so intro → services doesn't hitch.
+      const nearTerm = CHUNK_LOADERS.slice(0, 8);
+      const later = CHUNK_LOADERS.slice(8);
+      await Promise.allSettled(nearTerm.map((load) => load()));
+      return Promise.allSettled(later.map((load) => load()));
+    }
   );
   return chunkPrefetchPromise;
+}
+
+/** Prefetch modules for the upcoming scene based on scroll progress. */
+export function prefetchUpcomingByProgress(globalProgress) {
+  if (typeof window === "undefined") return;
+
+  if (globalProgress >= 0.26) {
+    void import("@/components/scene2/ServicesWorld");
+    void import("@/components/scene2/ServicesSection");
+    void import("@/components/services/ServicesEvilEyeBg");
+    void import("@/components/services/EvilEye");
+    void import("@/components/services/ServicesGradientBlindsBg");
+    void import("@/components/services/GradientBlinds");
+  }
+  if (globalProgress >= 0.42) {
+    void import("@/components/scene5/Scene5World");
+    void import("@/components/scene5/EarthGlobeModel");
+    void import("@/components/scene5/Scene5Overlay");
+  }
+  if (globalProgress >= 0.55) {
+    void import("@/components/scene6/Scene6World");
+    void import("@/components/movies/MoviesWorld");
+    void import("@/components/movies/DomeGallery");
+  }
 }
 
 /** Full warm-up — fire-and-forget (legacy). */
@@ -143,8 +179,8 @@ export function warmExperienceAssets() {
 }
 
 /**
- * Awaitable boot gate — loads GLBs, images, effect modules, and scene chunks
- * before the intro is shown.
+ * Awaitable boot gate — only blocks on critical assets so deploy/preview tabs
+ * can paint quickly without exhausting WebGL / memory.
  */
 export function waitForExperienceReady(onProgress) {
   if (typeof window === "undefined") {
@@ -163,55 +199,50 @@ export function waitForExperienceReady(onProgress) {
       report(onProgress, progress);
     };
 
-    report(onProgress, 0.02);
+    report(onProgress, 0.04);
     preloadExperienceGlbs();
 
-    const imageUrls = uniqueUrls([
-      ...CRITICAL_IMAGES,
-      ...EXPERIENCE_IMAGE_URLS,
-      ...SERVICE_IMAGE_URLS,
-      ...MOVIE_LIBRARY_IMAGES,
-    ]);
-
-    const glbWeight = 0.42;
-    const imageWeight = 0.22;
-    const chunkWeight = 0.28;
-
-    const glbShare = glbWeight / EXPERIENCE_GLB_PATHS.length;
-    await Promise.all(
-      EXPERIENCE_GLB_PATHS.map(async (url) => {
-        try {
-          await ensureGlbLoaded(url);
-        } catch {
-          // Continue boot even if one optional asset fails.
-        } finally {
-          bump(glbShare);
-        }
-      })
-    );
-
-    const imageBatch = Math.max(1, Math.ceil(imageUrls.length / 10));
-    for (let i = 0; i < imageUrls.length; i += imageBatch) {
-      const slice = imageUrls.slice(i, i + imageBatch);
-      await warmImageCache(slice);
-      bump(imageWeight * (slice.length / Math.max(1, imageUrls.length)));
+    // Camera GLB is required for intro; earth/dragon warm in background.
+    try {
+      await ensureGlbLoaded(CAMERA_GLB_PATH);
+    } catch {
+      // Continue — GlbWarmup / safety timeout still cover GPU ready.
     }
+    bump(0.35);
 
+    EXPERIENCE_GLB_PATHS.slice(1).forEach((url) => {
+      ensureGlbLoaded(url).catch(() => {});
+    });
+
+    const criticalImages = uniqueUrls(CRITICAL_IMAGES);
+    await warmImageCache(criticalImages);
+    bump(0.25);
+
+    // Priority canvas chunks only — remaining modules prefetch after ready.
     chunkPrefetchStarted = true;
-    const allChunkLoaders = [...PRIORITY_CHUNK_LOADERS, ...CHUNK_LOADERS];
-    const chunkShare = chunkWeight / allChunkLoaders.length;
-    chunkPrefetchPromise = Promise.allSettled(
-      allChunkLoaders.map(async (load) => {
+    await Promise.allSettled(
+      PRIORITY_CHUNK_LOADERS.map(async (load) => {
         try {
           await load();
         } finally {
-          bump(chunkShare);
+          bump(0.28 / PRIORITY_CHUNK_LOADERS.length);
         }
       })
     );
-    await chunkPrefetchPromise;
 
-    // Leave headroom for GPU warm + effect mount settle (0.92 → 1.0).
+    // Near-term scenes first (portfolio → services), then the rest.
+    const nearTerm = CHUNK_LOADERS.slice(0, 8);
+    const later = CHUNK_LOADERS.slice(8);
+    chunkPrefetchPromise = Promise.allSettled(nearTerm.map((load) => load())).then(() =>
+      Promise.allSettled(later.map((load) => load()))
+    );
+    void chunkPrefetchPromise;
+
+    // Remaining images in background.
+    void warmImageCache(
+      uniqueUrls([...EXPERIENCE_IMAGE_URLS, ...SERVICE_IMAGE_URLS, ...MOVIE_LIBRARY_IMAGES])
+    );
+
     report(onProgress, 0.92);
   })().catch((error) => {
     console.warn("[preload] Experience warm-up failed:", error);

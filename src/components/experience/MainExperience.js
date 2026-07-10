@@ -5,13 +5,12 @@ import dynamic from "next/dynamic";
 import { getSceneState, getActiveSceneOpacity, getStoryOverlayOpacity, getSceneBounds } from "@/lib/sceneConfig";
 import { useScrollExperience } from "@/hooks/useScrollExperience";
 import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress, getCameraPhase, STUDIO_BACKDROP } from "@/lib/cameraLens";
-import { waitForExperienceReady } from "@/lib/experienceAssetPreload";
+import { waitForExperienceReady, prefetchUpcomingByProgress } from "@/lib/experienceAssetPreload";
 import { ExperienceLoadingScreen } from "@/components/preload/ExperienceLoadingScreen";
 import { ExperienceWarmLayer } from "@/components/preload/ExperienceWarmLayer";
 import { ServicesGradientBlindsBg } from "@/components/services/ServicesGradientBlindsBg";
 import { ScrollPulseLayer } from "./ScrollPulseLayer";
 import { HeroTypography } from "@/components/typography/HeroTypography";
-import { TrackingCursor } from "@/components/interactions/TrackingCursor";
 import { ParallaxBackground } from "@/components/interactions/ParallaxBackground";
 import { HeroBrand } from "@/components/scene1/HeroBrand";
 import { HangingSpiderMan } from "@/components/scene1/HangingSpiderMan";
@@ -24,7 +23,7 @@ import { ServiceImagePreloader } from "@/components/scene2/ServiceImagePreloader
 import { ExperienceImagePreloader } from "@/components/ExperienceImagePreloader";
 import { ServicesSection } from "@/components/scene2/ServicesSection";
 import { ServicesEvilEyeBg } from "@/components/services/ServicesEvilEyeBg";
-import { getServicesIntroBgOpacity, getServicesCardsBgOpacity } from "@/lib/servicesVisualState";
+import { getServicesIntroBgOpacity, getServicesCardsBgOpacity, SERVICES_INTRO_END } from "@/lib/servicesVisualState";
 import { Scene4Overlay } from "@/components/scene4/Scene4Overlay";
 import { Scene5Overlay } from "@/components/scene5/Scene5Overlay";
 import { Scene6Overlay } from "@/components/scene6/Scene6Overlay";
@@ -51,8 +50,16 @@ export default function MainExperience() {
   const [effectsReady, setEffectsReady] = useState(false);
   const ready = assetsReady && gpuReady && effectsReady;
 
+  const progressRafRef = useRef(0);
+  const pendingProgressRef = useRef(0);
+
   const handleProgress = useCallback((value) => {
-    setGlobalProgress(value);
+    pendingProgressRef.current = value;
+    if (progressRafRef.current) return;
+    progressRafRef.current = requestAnimationFrame(() => {
+      progressRafRef.current = 0;
+      setGlobalProgress(pendingProgressRef.current);
+    });
   }, []);
 
   const handleGlbWarm = useCallback(() => {
@@ -64,6 +71,15 @@ export default function MainExperience() {
   }, []);
 
   useScrollExperience(triggerRef, handleProgress, ready);
+
+  useEffect(() => {
+    return () => {
+      if (progressRafRef.current) {
+        cancelAnimationFrame(progressRafRef.current);
+        progressRafRef.current = 0;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,11 +99,25 @@ export default function MainExperience() {
         setGpuReady(true);
         setEffectsReady(true);
       }
-    }, 60000);
+    }, 12000);
+
+    // Recover from WebGL context failures so the page stays usable.
+    const onRejection = (event) => {
+      const message = String(event.reason?.message || event.reason || "");
+      if (!/webgl/i.test(message)) return;
+      event.preventDefault();
+      console.warn("[experience] Recovered from WebGL failure:", event.reason);
+      if (!cancelled) {
+        setGpuReady(true);
+        setEffectsReady(true);
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection);
 
     return () => {
       cancelled = true;
       window.clearTimeout(safety);
+      window.removeEventListener("unhandledrejection", onRejection);
       document.body.classList.remove("experience-loading");
       document.documentElement.classList.remove("experience-loading");
     };
@@ -100,14 +130,24 @@ export default function MainExperience() {
   }, [ready]);
 
   useEffect(() => {
+    let rafId = 0;
+    let next = { x: 0.5, y: 0.5 };
     const onMove = (e) => {
-      setMouse({
+      next = {
         x: e.clientX / window.innerWidth,
         y: e.clientY / window.innerHeight,
+      };
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        setMouse(next);
       });
     };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Never leave movies scroll-lock stuck — it blocks scrolling mid-experience.
@@ -120,13 +160,20 @@ export default function MainExperience() {
     }
   }, [globalProgress]);
 
+  // Prefetch the next section's modules/models before the user arrives.
+  useEffect(() => {
+    if (!ready) return;
+    prefetchUpcomingByProgress(globalProgress);
+  }, [ready, globalProgress]);
+
   const sceneState = useMemo(
     () => ({
       ...getSceneState(globalProgress),
       onGlbWarm: handleGlbWarm,
-      forceWarmWorlds: !ready,
+      // Never force-mount every R3F world — that exhausts WebGL contexts and crashes deploy/preview tabs.
+      forceWarmWorlds: false,
     }),
-    [globalProgress, handleGlbWarm, ready]
+    [globalProgress, handleGlbWarm]
   );
 
   const { scenes, microBeat } = sceneState;
@@ -211,17 +258,22 @@ export default function MainExperience() {
     studioFade
   );
 
-  // Keep heavy background effects mounted after boot so sections never cold-start.
-  const mountEvilEye = assetsReady || ready;
-  const mountHyperspeed = assetsReady || ready;
-  const mountGradientBlinds = assetsReady || ready;
-  const keepGalleriesMounted = assetsReady || ready;
+  // Mount heavy WebGL backgrounds slightly before they are visible so shaders compile early.
+  const servicesStart = getSceneBounds(3).start;
+  const approachingServices = globalProgress >= servicesStart - 0.045;
+  const approachingCards =
+    approachingServices && scene3.progress >= SERVICES_INTRO_END * 0.45;
+  const approachingStory = globalProgress >= getSceneBounds(11).start - 0.04;
 
-  // During boot, keep galleries/overlays mounted (hidden under loader) so WebGL inits once.
-  const bootWarm = (value) => (!ready ? Math.max(value, 0.02) : value);
+  const mountEvilEye =
+    ready && (servicesEvilEyeOpacity > 0.01 || approachingServices);
+  const mountGradientBlinds =
+    ready && (servicesCardsBgOpacity > 0.01 || approachingCards);
+  const mountHyperspeed =
+    ready && (storyHyperspeedOpacity > 0.01 || approachingStory);
 
   // Keep the experience canvas mounted — remounting EffectComposer crashes with null gl.
-  // Mount during loading so GlbWarmup can decode models into GPU memory.
+  // Mount during loading so GlbWarmup can decode the camera GLB into GPU memory.
   const shouldMountExperienceCanvas = true;
 
   const displayLoadProgress = ready
@@ -241,7 +293,6 @@ export default function MainExperience() {
         onReady={handleEffectsWarm}
       />
 
-      <TrackingCursor enabled={ready && globalProgress < moviesSceneStart} />
       {(ready || assetsReady) && (
         <>
           <PortfolioImagePreloader />
@@ -358,13 +409,11 @@ export default function MainExperience() {
         <Scene5Overlay progress={scene6.progress} opacity={overlayGlobe * (1 - studioFade * 0.5)} />
         <Scene6Overlay
           progress={scene7.progress}
-          opacity={bootWarm(overlayReel * (1 - studioFade * 0.5))}
-          forceMount={keepGalleriesMounted}
+          opacity={overlayReel * (1 - studioFade * 0.5)}
         />
         <MoviesLibrarySection
           progress={scene7b.progress}
-          opacity={bootWarm(overlayMovies * (1 - studioFade * 0.5))}
-          forceMount={keepGalleriesMounted}
+          opacity={overlayMovies * (1 - studioFade * 0.5)}
         />
         <Scene8Overlay progress={scene8.progress} opacity={overlayVfx * (1 - studioFade * 0.5)} />
         <Scene9Overlay scene9={sceneState.scene9} opacity={overlayStats * (1 - studioFade * 0.5)} />
@@ -372,7 +421,7 @@ export default function MainExperience() {
         {mountHyperspeed && (
           <div
             className="story-hyperspeed-layer"
-            style={{ opacity: bootWarm(storyHyperspeedOpacity) > 0.02 ? storyHyperspeedOpacity : 0 }}
+            style={{ opacity: storyHyperspeedOpacity }}
             aria-hidden="true"
           >
             <StoryHyperspeedBg />

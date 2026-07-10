@@ -320,7 +320,7 @@ function ScrollStack({
     });
 
     if (isControlled) {
-      updateFromControlledProgress(controlledProgress);
+      updateFromControlledProgress(controlledProgress ?? 0);
       return () => {
         cardsRef.current = [];
         stackCompletedRef.current = false;
@@ -343,7 +343,6 @@ function ScrollStack({
       isUpdatingRef.current = false;
     };
   }, [
-    controlledProgress,
     isControlled,
     itemDistance,
     setupLenis,

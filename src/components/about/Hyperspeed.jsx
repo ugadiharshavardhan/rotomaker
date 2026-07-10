@@ -352,16 +352,31 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
  }
  this.container = container;
  this.hasValidSize = false;
+ this.renderer = null;
+ this.composer = null;
+ this.disposed = false;
+ this.initialized = false;
+ this.failed = false;
 
  const initW = Math.max(1, container.offsetWidth);
  const initH = Math.max(1, container.offsetHeight);
 
+ try {
  this.renderer = new THREE.WebGLRenderer({
  antialias: false,
- alpha: true
+ alpha: true,
+ failIfMajorPerformanceCaveat: false,
+ powerPreference: 'high-performance'
  });
+ } catch (error) {
+ console.warn('[Hyperspeed] WebGL unavailable:', error);
+ this.failed = true;
+ this.disposed = true;
+ return;
+ }
+
  this.renderer.setSize(initW, initH, false);
- this.renderer.setPixelRatio(window.devicePixelRatio);
+ this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
  this.composer = new EffectComposer(this.renderer);
  container.append(this.renderer.domElement);
 
@@ -381,8 +396,6 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
  };
  this.clock = new THREE.Clock();
  this.assets = {};
- this.disposed = false;
- this.initialized = false;
 
  this.road = new Road(this, options);
  this.leftCarLights = new CarLights(
@@ -610,6 +623,10 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
  }
 
  dispose() {
+ if (this.failed || this.disposed) {
+ this.disposed = true;
+ return;
+ }
  this.disposed = true;
  this.initialized = false;
 
@@ -633,7 +650,7 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
 
  if (this.renderer) {
  this.renderer.dispose();
- this.renderer.forceContextLoss();
+ // Avoid forceContextLoss — it can block new WebGL contexts after remounts.
  if (this.renderer.domElement && this.renderer.domElement.parentNode) {
  this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
  }
@@ -1191,13 +1208,26 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
  };
  options.distortion = distortions[options.distortion];
 
- const myApp = new App(container, options);
+ let myApp;
+ try {
+ myApp = new App(container, options);
+ } catch (error) {
+ console.warn('[Hyperspeed] Failed to start:', error);
+ return undefined;
+ }
+
+ if (myApp.failed || !myApp.renderer) {
+ return undefined;
+ }
+
  appRef.current = myApp;
 
  let cancelled = false;
  myApp.loadAssets().then(() => {
  if (cancelled || appRef.current !== myApp || myApp.disposed) return;
  myApp.init();
+ }).catch((error) => {
+ console.warn('[Hyperspeed] Asset load failed:', error);
  });
 
  return () => {

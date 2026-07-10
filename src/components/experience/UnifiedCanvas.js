@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { HollywoodCameraRig } from "@/components/camera/HollywoodCameraRig";
@@ -10,9 +10,11 @@ import { Scene1World } from "@/components/scene1/Scene1World";
 import { Scene } from "@/components/Scene";
 import { makeLazyWorld } from "@/components/experience/LazySceneWorld";
 import { GlbWarmup } from "@/components/preload/GlbWarmup";
+import { CanvasErrorBoundary } from "@/components/experience/CanvasErrorBoundary";
 import { getSceneBounds, SCENES } from "@/lib/sceneConfig";
 import { shouldShowGlbCamera, getScene1Backdrop, HERO_END, getScene1Phase, VFX_SECTION_END, IMPOSSIBLE_SECTION_END } from "@/lib/cameraLens";
 import { LightRaysR3F } from "@/components/scene1/LightRaysR3F";
+import { isWebGLAvailable, isWebGLError } from "@/lib/webglSupport";
 
 const LazyScene2World = makeLazyWorld(() =>
   import("@/components/scene2/Scene2World").then((m) => ({ default: m.Scene2World }))
@@ -52,7 +54,7 @@ function sceneStart(id) {
   return SCENES.find((s) => s.id === id)?.start ?? 1;
 }
 
-function shouldMountWorld(globalProgress, sceneId, opacity, lead = 0.05) {
+function shouldMountWorld(globalProgress, sceneId, opacity, lead = 0.1) {
   return opacity > 0.001 || globalProgress >= sceneStart(sceneId) - lead;
 }
 
@@ -184,7 +186,10 @@ function WorldContent({ sceneState }) {
   );
 }
 
-export function UnifiedCanvas({ sceneState }) {
+function ExperienceCanvas({ sceneState, onUnavailable }) {
+  const maxDpr =
+    typeof window !== "undefined" && window.devicePixelRatio > 1.5 ? 1.15 : 1.25;
+
   return (
     <Canvas
       className="scene-canvas"
@@ -203,8 +208,17 @@ export function UnifiedCanvas({ sceneState }) {
         gl.outputColorSpace = THREE.SRGBColorSpace;
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.25;
+        gl.domElement.addEventListener(
+          "webglcontextlost",
+          (event) => {
+            event.preventDefault();
+            console.warn("[canvas] WebGL context lost");
+            onUnavailable?.();
+          },
+          false
+        );
       }}
-      dpr={[1, 1.5]}
+      dpr={[1, maxDpr]}
       camera={{ fov: 45, near: 0.1, far: 100, position: [0, 1.2, 5.5] }}
     >
       <Suspense fallback={null}>
@@ -212,5 +226,46 @@ export function UnifiedCanvas({ sceneState }) {
         <WorldContent sceneState={sceneState} />
       </Suspense>
     </Canvas>
+  );
+}
+
+export function UnifiedCanvas({ sceneState }) {
+  const [enabled, setEnabled] = useState(() =>
+    typeof window === "undefined" ? false : isWebGLAvailable()
+  );
+  const onGlbWarm = sceneState.onGlbWarm;
+
+  const handleUnavailable = () => {
+    setEnabled(false);
+    // Unlock loading even when GPU init fails.
+    onGlbWarm?.();
+  };
+
+  useEffect(() => {
+    if (!isWebGLAvailable()) {
+      handleUnavailable();
+      return undefined;
+    }
+
+    const onRejection = (event) => {
+      if (!isWebGLError(event.reason)) return;
+      event.preventDefault();
+      console.warn("[canvas] Suppressed WebGL rejection:", event.reason);
+      handleUnavailable();
+    };
+
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only recovery wiring
+  }, []);
+
+  if (!enabled) {
+    return null;
+  }
+
+  return (
+    <CanvasErrorBoundary onError={handleUnavailable}>
+      <ExperienceCanvas sceneState={sceneState} onUnavailable={handleUnavailable} />
+    </CanvasErrorBoundary>
   );
 }

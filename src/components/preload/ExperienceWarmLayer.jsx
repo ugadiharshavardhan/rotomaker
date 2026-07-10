@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 
 /**
- * After assets + GPU are ready, wait for forced warm-mounts
- * (Evil Eye, Hyperspeed, galleries, R3F worlds) to settle.
+ * After assets + GPU are ready, briefly settle then unlock the experience.
+ * Heavy WebGL effects mount on-demand per section — do not wait for them here.
  */
 export function ExperienceWarmLayer({ active, onReady }) {
   useEffect(() => {
@@ -13,7 +13,7 @@ export function ExperienceWarmLayer({ active, onReady }) {
     let cancelled = false;
     const settle = async () => {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await new Promise((resolve) => setTimeout(resolve, 80));
       if (!cancelled) onReady?.();
     };
     void settle();

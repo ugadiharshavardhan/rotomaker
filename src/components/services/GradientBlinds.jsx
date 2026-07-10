@@ -237,11 +237,13 @@ void main() {
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
-      renderer.setSize(rect.width, rect.height);
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      renderer.setSize(width, height);
       uniforms.iResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight, 1];
 
       if (blindMinWidth && blindMinWidth > 0) {
-        const maxByMinWidth = Math.max(1, Math.floor(rect.width / blindMinWidth));
+        const maxByMinWidth = Math.max(1, Math.floor(width / blindMinWidth));
         const effective = blindCount ? Math.min(blindCount, maxByMinWidth) : maxByMinWidth;
         uniforms.uBlindCount.value = Math.max(1, effective);
       } else {

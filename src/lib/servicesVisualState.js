@@ -2,8 +2,8 @@ import { VFX_SERVICES } from "@/lib/servicesData";
 import { getServicesItemIndex } from "@/lib/statsScroll";
 import { smoothstep, clamp } from "@/lib/easing";
 
-export const SERVICES_INTRO_END = 0.36;
-export const SERVICES_WORDS_END = 0.36;
+export const SERVICES_INTRO_END = 0.18;
+export const SERVICES_WORDS_END = 0.18;
 
 export const SERVICES_INTRO_WORD = { key: "intro", text: "We Don't Just Edit.", type: "intro" };
 
