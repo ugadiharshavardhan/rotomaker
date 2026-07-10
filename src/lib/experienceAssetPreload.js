@@ -3,6 +3,7 @@ import { warmImageCache } from "@/lib/moviesImageCache";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
 import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
 import { EARTH_GLB_PATH } from "@/lib/globeModelPath";
+import { DRAGON_GLB_PATH } from "@/lib/dragonModelPath";
 
 const CHUNK_LOADERS = [
   () => import("@/components/scene2/Scene2Overlay"),
@@ -37,12 +38,13 @@ export function preloadExperienceGlbs() {
   glbPreloadStarted = true;
   useGLTF.preload(CAMERA_GLB_PATH);
   useGLTF.preload(EARTH_GLB_PATH);
+  useGLTF.preload(DRAGON_GLB_PATH);
 }
 
 /** Warm HTTP cache for GLBs (parallel with drei loader). */
 export function warmGlbHttpCache() {
   if (typeof window === "undefined") return;
-  [CAMERA_GLB_PATH, EARTH_GLB_PATH].forEach((href) => {
+  [CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH].forEach((href) => {
     fetch(href, { cache: "force-cache" }).catch(() => {});
   });
 }
@@ -66,4 +68,4 @@ export function warmExperienceAssets() {
   return prefetchExperienceChunks();
 }
 
-export const EXPERIENCE_GLB_PATHS = [CAMERA_GLB_PATH, EARTH_GLB_PATH];
+export const EXPERIENCE_GLB_PATHS = [CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH];

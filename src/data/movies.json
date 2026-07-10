@@ -17,8 +17,7 @@
         { "id": "matrix", "title": "The Matrix", "year": "2021", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzV-4cz3MQS1X8bnoWiuO70tyzZmNDRh-FvnUYwRXaPg&s=10" },
         { "id": "blade-runner", "title": "Blade Runner 2049", "year": "2017", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToWcEX9N366zhCObF44a1ic171Ds0cTY8HWTDFqiFHpg&s=10" }
       ]
-    },
-    {
+    },    {
       "id": "commercial",
       "eyebrow": "Branded Content",
       "title": "Commercial",

@@ -60,7 +60,6 @@ export function Scene6Overlay({ progress, opacity = 1 }) {
         key={display.id}
         style={{
           opacity: reveal,
-          transform: `translateY(${(1 - reveal) * 24}px)`,
         }}
       >
         <p className="scene6-detail__label">{display.category}</p>

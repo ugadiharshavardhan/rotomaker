@@ -493,11 +493,19 @@ class App {
 
   setScrollProgress(progress, itemCount) {
     if (!this.medias || !this.medias[0]) return;
+    // Match getReelItemIndex / getPinnedSegmentIndex so the centered card
+    // stays in sync with the detail panel + thumbnail strip.
     const introHold = 0.06;
-    const t = progress <= introHold ? 0 : (progress - introHold) / (1 - introHold);
     const count = itemCount || this.itemCount || 0;
-    const floatIndex = t * count;
-    this.scroll.target = -floatIndex * this.medias[0].width;
+    if (count <= 0) return;
+
+    let index = 0;
+    if (progress > introHold) {
+      const t = (progress - introHold) / (1 - introHold);
+      index = Math.min(count - 1, Math.floor(t * count));
+    }
+
+    this.scroll.target = -index * this.medias[0].width;
   }
 
   onTouchDown(e) {

@@ -3,6 +3,7 @@ import { LOCAL_MOVIE_CARD_URLS } from "@/lib/imagePreload";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
 import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
 import { EARTH_GLB_PATH } from "@/lib/globeModelPath";
+import { DRAGON_GLB_PATH } from "@/lib/dragonModelPath";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,7 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <head>
-        {[CAMERA_GLB_PATH, EARTH_GLB_PATH].map((href) => (
+        {[CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH].map((href) => (
           <link key={href} rel="preload" href={href} as="fetch" crossOrigin="anonymous" />
         ))}
         {MOVIE_IMAGES.map((href) => (

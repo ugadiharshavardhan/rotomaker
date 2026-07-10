@@ -22,42 +22,42 @@ export function EarthLocationPin({
   const ringRef = useRef();
   const labelRef = useRef();
 
-  const markerRadius = surfaceRadius * 0.028;
+  const markerRadius = surfaceRadius * 0.032;
 
-  const { surfacePoint, normal, labelOffset } = useMemo(() => {
+  const { surfacePoint, normal, labelOffset, surfaceQuat } = useMemo(() => {
     const n = latLongToNormal(latitude, longitude);
     const point = latLongToVector3(latitude, longitude, surfaceRadius);
     return {
       surfacePoint: point,
       normal: n,
-      labelOffset: n.clone().multiplyScalar(surfaceRadius * 0.08),
+      labelOffset: n.clone().multiplyScalar(surfaceRadius * 0.09),
+      surfaceQuat: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n),
     };
   }, [latitude, longitude, surfaceRadius]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const reveal = Math.min(1, progress);
-    const floatAmount = Math.sin(t * 1.4 + index * 0.9) * surfaceRadius * 0.002 * reveal;
+    // Keep pins readable once the globe is in view — don't wait for full approach
+    const reveal = Math.min(1, Math.max(0, (progress - 0.08) / 0.35));
+    const floatAmount = Math.sin(t * 1.4 + index * 0.9) * surfaceRadius * 0.0025 * reveal;
 
     if (groupRef.current) {
       groupRef.current.position.copy(surfacePoint).addScaledVector(normal, floatAmount);
     }
 
     if (markerRef.current) {
-      const pulse = 1 + Math.sin(t * 2.4 + index * 1.1) * 0.12;
-      markerRef.current.scale.setScalar(pulse * reveal);
+      const pulse = 1 + Math.sin(t * 2.4 + index * 1.1) * 0.1;
+      markerRef.current.scale.setScalar(Math.max(0.001, pulse * reveal));
     }
 
     if (ringRef.current) {
-      const ringPulse = 1 + Math.sin(t * 2 + index) * 0.2;
-      ringRef.current.scale.setScalar(ringPulse);
-      ringRef.current.material.opacity = (0.18 + Math.sin(t * 3 + index) * 0.08) * reveal;
-      ringRef.current.rotation.z = t * 0.4 + index;
+      const ringPulse = 1 + Math.sin(t * 2 + index) * 0.18;
+      ringRef.current.scale.setScalar(Math.max(0.001, ringPulse * reveal));
+      ringRef.current.material.opacity = (0.22 + Math.sin(t * 3 + index) * 0.08) * reveal;
     }
 
     if (labelRef.current) {
-      labelRef.current.style.opacity = String(Math.min(1, reveal * 1.2));
-      labelRef.current.style.transform = `translateY(${Math.sin(t * 1.8 + index) * 3}px)`;
+      labelRef.current.style.opacity = String(Math.min(1, reveal * 1.15));
     }
   });
 
@@ -72,22 +72,22 @@ export function EarthLocationPin({
           }
         }}
       >
-        <sphereGeometry args={[markerRadius, 20, 20]} />
+        <sphereGeometry args={[markerRadius, 24, 24]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.95}
+          opacity={0.98}
           toneMapped={false}
           depthWrite={false}
         />
       </mesh>
 
-      <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]} renderOrder={14}>
-        <ringGeometry args={[markerRadius * 1.8, markerRadius * 2.6, 32]} />
+      <mesh ref={ringRef} quaternion={surfaceQuat} renderOrder={14}>
+        <ringGeometry args={[markerRadius * 1.7, markerRadius * 2.5, 40]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.2}
+          opacity={0.25}
           depthWrite={false}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}

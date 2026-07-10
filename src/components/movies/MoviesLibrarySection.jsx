@@ -1,10 +1,11 @@
 "use client";
 
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { MOVIE_LIBRARY_CATEGORIES, MOVIE_LIBRARY_PANELS } from "@/lib/moviesData";
 import { getMoviesPanelIndex } from "@/lib/statsScroll";
 import { warmImageCache } from "@/lib/moviesImageCache";
+import { getMoviesDomeMinRadius } from "@/lib/viewport";
 
 const DomeGallery = dynamic(() => import("./DomeGallery"), {
   ssr: false,
@@ -32,7 +33,7 @@ function CategoryHeader({ category, motion }) {
   );
 }
 
-function CategoryDome({ category }) {
+function CategoryDome({ category, minRadius, isMobile }) {
   const galleryImages = category.movies.map((movie) => ({
     src: movie.image,
     alt: `${movie.title} (${movie.year})`,
@@ -44,30 +45,44 @@ function CategoryDome({ category }) {
       <DomeGallery
         key={category.id}
         images={galleryImages}
-        fit={1.02}
+        fit={isMobile ? 1.12 : 1.02}
         fitBasis="max"
-        minRadius={560}
+        minRadius={minRadius}
         maxRadius={1500}
-        padFactor={0.02}
+        padFactor={isMobile ? 0.01 : 0.02}
         overlayBlurColor="transparent"
         seamless
         grayscale={false}
-        imageBorderRadius="6px"
+        imageBorderRadius={isMobile ? "4px" : "6px"}
         openedImageBorderRadius="8px"
-        openedImageWidth="280px"
-        openedImageHeight="420px"
-        dragSensitivity={14}
+        openedImageWidth={isMobile ? "min(72vw, 260px)" : "280px"}
+        openedImageHeight={isMobile ? "min(58vh, 390px)" : "420px"}
+        dragSensitivity={isMobile ? 12 : 14}
         dragDampening={0.9}
         autoRotateSpeed={0.075}
-        segments={35}
+        segments={isMobile ? 28 : 35}
       />
     </div>
   );
 }
 
 export function MoviesLibrarySection({ progress, opacity = 1 }) {
+  const [minRadius, setMinRadius] = useState(560);
+  const [isMobile, setIsMobile] = useState(false);
+
   useLayoutEffect(() => {
     void warmImageCache(ALL_MOVIES_LIBRARY_IMAGES);
+  }, []);
+
+  useLayoutEffect(() => {
+    const sync = () => {
+      const width = window.innerWidth;
+      setMinRadius(getMoviesDomeMinRadius(width));
+      setIsMobile(width < 768);
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
   }, []);
 
   useLayoutEffect(() => {
@@ -96,7 +111,7 @@ export function MoviesLibrarySection({ progress, opacity = 1 }) {
       <CategoryHeader category={panel.category} motion={{ opacity: panelOpacity }} />
 
       <div className="story-flow__stage movies-flow__stage">
-        <CategoryDome category={panel.category} />
+        <CategoryDome category={panel.category} minRadius={minRadius} isMobile={isMobile} />
       </div>
 
       <div className="movies-flow__tabs" aria-hidden="true">

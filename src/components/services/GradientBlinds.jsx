@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Mesh, Program, Renderer, Triangle } from "ogl";
+import { Mesh, Program, Triangle } from "ogl";
+import { createOglRenderer, disposeOglCanvas } from "@/lib/oglRenderer";
 import "./GradientBlinds.css";
 
 const MAX_COLORS = 8;
@@ -56,11 +57,13 @@ export default function GradientBlinds({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({
+    const renderer = createOglRenderer({
       dpr: dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
       alpha: true,
       antialias: true,
     });
+    if (!renderer) return;
+
     rendererRef.current = renderer;
     const gl = renderer.gl;
     const canvas = gl.canvas;
@@ -312,7 +315,7 @@ void main() {
       callIfFn(programRef.current, "remove");
       callIfFn(geometryRef.current, "remove");
       callIfFn(meshRef.current, "remove");
-      callIfFn(rendererRef.current, "destroy");
+      disposeOglCanvas(rendererRef.current);
       programRef.current = null;
       geometryRef.current = null;
       meshRef.current = null;

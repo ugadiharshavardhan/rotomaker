@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
 const EarthGlobeContext = createContext(null);
 
 /** Surface radius multiplier — lifts pins slightly above the mesh to avoid z-fighting. */
-export const EARTH_PIN_SURFACE_OFFSET = 1.04;
+export const EARTH_PIN_SURFACE_OFFSET = 1.015;
 
 export function EarthGlobeProvider({ radius, children }) {
   const value = {

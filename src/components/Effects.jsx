@@ -8,8 +8,21 @@ import {
 } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 
-export function Effects({ enabled = true }) {
+export function Effects({ enabled = true, studio = false }) {
   if (!enabled) return null;
+
+  if (studio) {
+    return (
+      <EffectComposer multisampling={0}>
+        <Bloom
+          intensity={0.08}
+          luminanceThreshold={0.72}
+          luminanceSmoothing={0.95}
+          mipmapBlur
+        />
+      </EffectComposer>
+    );
+  }
 
   return (
     <EffectComposer multisampling={0} enableNormalPass>

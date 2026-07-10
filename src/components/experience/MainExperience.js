@@ -6,7 +6,7 @@ import { getSceneState, getActiveSceneOpacity, getStoryOverlayOpacity, getSceneB
 import { EXPERIENCE_IMAGE_URLS } from "@/lib/imagePreload";
 import { warmImageCache } from "@/lib/moviesImageCache";
 import { useScrollExperience } from "@/hooks/useScrollExperience";
-import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress } from "@/lib/cameraLens";
+import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress, getCameraPhase, STUDIO_BACKDROP, HERO_END } from "@/lib/cameraLens";
 import { ExperienceAssetPreloader } from "@/components/preload/ExperienceAssetPreloader";
 import { ScrollPulseLayer } from "./ScrollPulseLayer";
 import { HeroTypography } from "@/components/typography/HeroTypography";
@@ -15,7 +15,7 @@ import { ParallaxBackground } from "@/components/interactions/ParallaxBackground
 import { HeroBrand } from "@/components/scene1/HeroBrand";
 import { HeroLightRays } from "@/components/scene1/HeroLightRays";
 import { HangingSpiderMan } from "@/components/scene1/HangingSpiderMan";
-import { HeroAquaman } from "@/components/scene1/HeroAquaman";
+import { HeroDragon } from "@/components/scene1/HeroDragon";
 import { LensPortalOverlay } from "@/components/scene1/LensPortalOverlay";
 import { CameraSectionOverlay } from "@/components/scene1/CameraSectionOverlay";
 import { SoundWaveIndicator } from "@/components/scene1/SoundWaveIndicator";
@@ -110,7 +110,6 @@ export default function MainExperience() {
   const moviesSceneStart = getSceneBounds(8).start;
   const ctaSceneStart = getSceneBounds(13).start;
   const isStoryContent = globalProgress >= moviesSceneStart && globalProgress < ctaSceneStart;
-  const scene1Backdrop = scene1.opacity > 0.01 ? getScene1Backdrop(scene1.progress) : "#030303";
 
   const vignetteStrength = isStoryContent
     ? 0.06
@@ -122,6 +121,16 @@ export default function MainExperience() {
     : 0;
 
   const lensDive = isVfxSection ? getVfxLocalProgress(scene1.progress) : 0;
+  const cameraDive = isVfxSection ? getCameraPhase(scene1.progress).dive : 0;
+  const isGlobeSection = overlayGlobe > 0.01 && activeSceneId === 6;
+  const phaseBackdropColor =
+    isVfxSection
+      ? STUDIO_BACKDROP
+      : isGlobeSection
+        ? "#000000"
+        : scene1.opacity > 0.01
+          ? getScene1Backdrop(scene1.progress)
+          : null;
 
   const studioFade =
     globalProgress >= ctaSceneStart && globalProgress < ctaSceneStart + 0.017
@@ -148,6 +157,9 @@ export default function MainExperience() {
     studioFade
   );
 
+  const shouldMountExperienceCanvas =
+    scene1.progress >= HERO_END || activeSceneId > 1 || globalProgress >= 0.12;
+
   return (
     <>
       <ExperienceAssetPreloader />
@@ -157,7 +169,7 @@ export default function MainExperience() {
       <ExperienceImagePreloader />
 
       <div
-        className={`scene-fixed${isInteractive ? " scene-fixed--interactive" : ""}${isVfxSection ? " scene-fixed--camera" : ""}`}
+        className={`scene-fixed${isInteractive ? " scene-fixed--interactive" : ""}${isVfxSection ? " scene-fixed--camera" : ""}${cameraDive > 0.02 ? " scene-fixed--camera-dive" : ""}${isGlobeSection ? " scene-fixed--globe" : ""}`}
         aria-label="Rotomaker cinematic experience"
         style={{
           filter:
@@ -168,10 +180,10 @@ export default function MainExperience() {
       >
         {isPureHero && <div className="hero-backdrop" aria-hidden="true" />}
 
-        {scene1.opacity > 0.01 && (
+        {phaseBackdropColor && (
           <div
             className="scene-phase-backdrop"
-            style={{ background: scene1Backdrop }}
+            style={{ background: phaseBackdropColor }}
             aria-hidden="true"
           />
         )}
@@ -187,7 +199,7 @@ export default function MainExperience() {
             transition: "opacity 0.65s ease",
           }}
         >
-          <UnifiedCanvas sceneState={sceneState} />
+          {shouldMountExperienceCanvas && <UnifiedCanvas sceneState={sceneState} />}
         </div>
 
         <ScrollPulseLayer microBeat={microBeat} suppressed={isStoryContent} />
@@ -195,7 +207,10 @@ export default function MainExperience() {
         <div
           className="scene-vignette"
           style={{
-            opacity: isPureHero || scene1Phase === "impossible" ? 0 : Math.max(0, 1 - lensDive * 0.85),
+            opacity:
+              isPureHero || scene1Phase === "impossible" || isVfxSection
+                ? 0
+                : Math.max(0, 1 - lensDive * 0.85),
             transition: "opacity 0.55s ease",
             background: `radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,${vignetteStrength + studioFade * 0.2}) 100%)`,
           }}
@@ -218,7 +233,7 @@ export default function MainExperience() {
         )}
 
         <HangingSpiderMan progress={scene1.progress} />
-        <HeroAquaman progress={scene1.progress} />
+        <HeroDragon progress={scene1.progress} />
 
         {isVfxSection && <LensPortalOverlay progress={scene1.progress} />}
         <CameraSectionOverlay progress={scene1.progress} />

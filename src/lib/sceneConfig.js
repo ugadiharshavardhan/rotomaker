@@ -29,26 +29,26 @@ export const SCENE4_WORDS = [
   { key: "worlds", text: "We Create Worlds.", type: "service" },
 ];
 
-/** WGS-84 geographic centers — sourced from USGS / Wikipedia / Natural Resources Canada. */
+/** WGS-84 anchors — converted to 3D via latLongToVector3 on the globe mesh. */
 export const GLOBE_LOCATIONS = [
   {
     name: "India",
-    lat: 20.5937,
-    lng: 78.9629,
-    label: "Mumbai · Bengaluru · Hyderabad",
+    lat: 28.6139,
+    lng: 77.209,
+    label: "New Delhi · Mumbai · Bengaluru",
     mapUrl: "https://maps.app.goo.gl/Qhx3UgQJZtf8orqr6",
   },
   {
     name: "USA",
-    lat: 39.8283,
-    lng: -98.5795,
-    label: "Los Angeles · New York · Atlanta",
+    lat: 40.7128,
+    lng: -74.006,
+    label: "New York · Los Angeles · Atlanta",
     mapUrl: "https://maps.app.goo.gl/dvsRWEMQEYBioBTF7",
   },
   {
     name: "Canada",
-    lat: 56.1304,
-    lng: -106.3468,
+    lat: 43.6532,
+    lng: -79.3832,
     label: "Toronto · Vancouver · Montréal",
     mapUrl: "https://maps.app.goo.gl/Wt8mQBRjuiQ837hY7",
   },

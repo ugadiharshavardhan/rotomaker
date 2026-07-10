@@ -62,11 +62,16 @@ function WorldContent({ sceneState }) {
   const activeId = activeScene.id;
   const isPureHero = scenes[0].progress < 0.05;
   const showGlbCamera = activeId === 1 && shouldShowGlbCamera(scenes[0].progress, scenes[0].opacity);
-  const canvasBg = activeId === 1 ? getScene1Backdrop(scenes[0].progress) : "#030303";
+  const isGlobeActive = activeId === 6 && scenes[5].opacity > 0;
+  const canvasBg =
+    activeId === 1
+      ? getScene1Backdrop(scenes[0].progress)
+      : isGlobeActive || (activeId === 6 && scenes[5].opacity > 0.001)
+        ? "#000000"
+        : "#030303";
 
   const worldOpacity = (_sceneId, index) => scenes[index].opacity;
 
-  const isGlobeActive = activeId === 6 && scenes[5].opacity > 0;
   const mountCameraScene = globalProgress < getSceneBounds(2).start + 0.03;
 
   return (
@@ -157,10 +162,12 @@ export function UnifiedCanvas({ sceneState }) {
     <Canvas
       className="scene-canvas"
       shadows="soft"
+      frameloop="always"
       gl={{
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
+        failIfMajorPerformanceCaveat: false,
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.25,
       }}

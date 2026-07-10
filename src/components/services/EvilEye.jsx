@@ -1,7 +1,8 @@
 "use client";
 
-import { Renderer, Program, Mesh, Triangle, Texture } from "ogl";
+import { Program, Mesh, Triangle, Texture } from "ogl";
 import { useEffect, useRef } from "react";
+import { createOglRenderer, disposeOglCanvas } from "@/lib/oglRenderer";
 import "./EvilEye.css";
 
 function hexToVec3(hex) {
@@ -168,7 +169,9 @@ export default function EvilEye({
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    const renderer = new Renderer({ alpha: true, premultipliedAlpha: false });
+    const renderer = createOglRenderer({ alpha: true, premultipliedAlpha: false });
+    if (!renderer) return;
+
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
 
@@ -260,10 +263,7 @@ export default function EvilEye({
       window.removeEventListener("resize", resize);
       container.removeEventListener("mousemove", onMouseMove);
       container.removeEventListener("mouseleave", onMouseLeave);
-      if (container.contains(gl.canvas)) {
-        container.removeChild(gl.canvas);
-      }
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      disposeOglCanvas(renderer);
     };
   }, [
     eyeColor,

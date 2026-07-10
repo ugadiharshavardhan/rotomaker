@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { GLOBE_MODEL_RADIUS } from "@/lib/globeModelPath";
 import { latLongToVector3 } from "@/lib/latLongToVector3";
 
@@ -14,22 +15,65 @@ export function latLngToGlobeVector3(lat, lng, radius = GLOBE_MODEL_RADIUS) {
   return [v.x, v.y, v.z];
 }
 
-export function prepareEarthGeometry(gltfScene) {
+function collectMeshGeometries(gltfScene) {
   gltfScene.updateWorldMatrix(true, true);
+  const geometries = [];
 
-  let sourceMesh = null;
   gltfScene.traverse((child) => {
-    if (child.isMesh && !sourceMesh) sourceMesh = child;
+    if (!child.isMesh?.geometry) return;
+    const geometry = child.geometry.clone();
+    geometry.applyMatrix4(child.matrixWorld);
+    geometries.push(geometry);
   });
 
-  if (!sourceMesh) return null;
+  return geometries;
+}
 
-  const geometry = sourceMesh.geometry.clone();
-  geometry.applyMatrix4(sourceMesh.matrixWorld);
-  geometry.center();
-  geometry.computeBoundingSphere();
+/** Merge every Earth mesh in the GLB, center, and return unified geometry. */
+export function prepareEarthGeometry(gltfScene) {
+  const geometries = collectMeshGeometries(gltfScene);
+  if (!geometries.length) return null;
 
-  return geometry;
+  const merged = mergeGeometries(geometries, false);
+  if (!merged) return null;
+
+  merged.center();
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+/** Clone the full GLB scene, center it, and scale to the target globe radius. */
+export function prepareEarthRoot(gltfScene) {
+  const root = gltfScene.clone(true);
+  root.updateWorldMatrix(true, true);
+
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+    child.castShadow = true;
+    child.receiveShadow = true;
+
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((mat) => {
+      if (!mat) return;
+      mat.needsUpdate = true;
+      if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+    });
+  });
+
+  const box = new THREE.Box3().setFromObject(root);
+  const center = box.getCenter(new THREE.Vector3());
+  const boundSphere = new THREE.Sphere();
+  box.getBoundingSphere(boundSphere);
+
+  root.position.sub(center);
+
+  const scale = GLOBE_MODEL_RADIUS / Math.max(boundSphere.radius, 0.001);
+
+  return {
+    root,
+    scale,
+    radius: GLOBE_MODEL_RADIUS,
+  };
 }
 
 export function getGlobeScaleFromGeometry(geometry) {

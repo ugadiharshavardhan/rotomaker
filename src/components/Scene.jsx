@@ -16,12 +16,15 @@ import {
   getVfxLocalProgress,
   shouldShowGlbCamera,
 } from "@/lib/cameraLens";
+import { getCameraViewportLayout } from "@/lib/cameraLayout";
 
 function CameraOrbitRig({ scrollProgress }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  const layout = getCameraViewportLayout(size.width);
   const dampedPos = useRef(new THREE.Vector3(0, 0.65, 7));
   const dampedLook = useRef(new THREE.Vector3(...CAMERA_LENS_TARGET));
   const dampedFov = useRef(45);
+  const hasSnapped = useRef(false);
 
   useFrame((_, delta) => {
     const zoom = getCameraZoom(scrollProgress);
@@ -35,8 +38,12 @@ function CameraOrbitRig({ scrollProgress }) {
 
     if (dive <= 0.001) {
       const orbitAngle = zoom * Math.PI * 0.32;
-      const radius = THREE.MathUtils.lerp(7, 4.2, easeInOutCubic(zoom));
-      const height = THREE.MathUtils.lerp(0.65, 0.32, zoom);
+      const radius = layout.lockOrbitZoom
+        ? layout.orbitRadius * layout.orbitRadiusScale
+        : THREE.MathUtils.lerp(7, 4.2, easeInOutCubic(zoom)) * layout.orbitRadiusScale;
+      const height = layout.lockOrbitZoom
+        ? layout.orbitHeight + layout.cameraHeightOffset
+        : THREE.MathUtils.lerp(0.65, 0.32, zoom) + layout.cameraHeightOffset;
 
       targetPos = new THREE.Vector3(
         Math.sin(orbitAngle) * radius,
@@ -44,7 +51,10 @@ function CameraOrbitRig({ scrollProgress }) {
         Math.cos(orbitAngle) * radius
       );
       targetLook = lens.clone();
-      targetFov = THREE.MathUtils.lerp(45, 36, zoom);
+      targetLook.y += layout.modelOffsetY * 0.35;
+      targetFov = layout.lockOrbitZoom
+        ? layout.orbitFov + layout.fovBoost
+        : THREE.MathUtils.lerp(45 + layout.fovBoost, 36 + layout.fovBoost, zoom);
     } else {
       const eased = easeInCubic(dive);
       const approach = new THREE.Vector3(0.12, 0.3, 3.4);
@@ -64,9 +74,17 @@ function CameraOrbitRig({ scrollProgress }) {
       }
     }
 
-    dampedPos.current.lerp(targetPos, damp);
-    dampedLook.current.lerp(targetLook, damp);
-    dampedFov.current = THREE.MathUtils.lerp(dampedFov.current, targetFov, damp);
+    // Snap on mount / re-entry so size doesn't grow then settle
+    if (!hasSnapped.current) {
+      dampedPos.current.copy(targetPos);
+      dampedLook.current.copy(targetLook);
+      dampedFov.current = targetFov;
+      hasSnapped.current = true;
+    } else {
+      dampedPos.current.lerp(targetPos, damp);
+      dampedLook.current.lerp(targetLook, damp);
+      dampedFov.current = THREE.MathUtils.lerp(dampedFov.current, targetFov, damp);
+    }
 
     camera.position.copy(dampedPos.current);
     camera.lookAt(dampedLook.current);
@@ -77,24 +95,18 @@ function CameraOrbitRig({ scrollProgress }) {
   return null;
 }
 
-export function Scene({ scrollProgress = 0, opacity = 1 }) {
-  if (!shouldShowGlbCamera(scrollProgress, opacity)) return null;
-
-  const local = getVfxLocalProgress(scrollProgress);
-  const { dive } = getCameraPhase(scrollProgress);
-  const fadeIn = Math.min(1, local / 0.08);
-  const fadeOut = local > 0.9 ? Math.max(0, 1 - (local - 0.9) / 0.1) : 1;
-  const sceneOpacity = fadeIn * fadeOut * opacity;
-
-  const modelFade = local > 0.85 ? Math.max(0, 1 - (local - 0.85) / 0.15) : 1;
-
-  if (sceneOpacity <= 0.01) return null;
-
+function CameraStudioContent({ scrollProgress, sceneOpacity, modelFade, dive }) {
+  const { size } = useThree();
+  const compactStudio = size.width < 768;
   const isDev = process.env.NODE_ENV === "development";
 
   return (
-    <group visible={sceneOpacity > 0.01}>
-      <Lighting intensity={sceneOpacity * (1 - dive * 0.2)} variant="studio" />
+    <>
+      <Lighting
+        intensity={sceneOpacity * (1 - dive * 0.2)}
+        variant="studio"
+        compact={compactStudio}
+      />
       <CameraModel
         scrollProgress={scrollProgress}
         opacity={sceneOpacity * modelFade}
@@ -111,7 +123,35 @@ export function Scene({ scrollProgress = 0, opacity = 1 }) {
       ) : (
         <CameraOrbitRig scrollProgress={scrollProgress} />
       )}
-      <Effects enabled={sceneOpacity > 0.15 && dive < 0.85} />
+      <Effects
+        enabled={sceneOpacity > 0.15 && dive < 0.85}
+        studio
+      />
+    </>
+  );
+}
+
+export function Scene({ scrollProgress = 0, opacity = 1 }) {
+  if (!shouldShowGlbCamera(scrollProgress, opacity)) return null;
+
+  const local = getVfxLocalProgress(scrollProgress);
+  const { dive } = getCameraPhase(scrollProgress);
+  const fadeIn = Math.min(1, local / 0.08);
+  const fadeOut = local > 0.9 ? Math.max(0, 1 - (local - 0.9) / 0.1) : 1;
+  const sceneOpacity = fadeIn * fadeOut * opacity;
+
+  const modelFade = local > 0.85 ? Math.max(0, 1 - (local - 0.85) / 0.15) : 1;
+
+  if (sceneOpacity <= 0.01) return null;
+
+  return (
+    <group visible={sceneOpacity > 0.01}>
+      <CameraStudioContent
+        scrollProgress={scrollProgress}
+        sceneOpacity={sceneOpacity}
+        modelFade={modelFade}
+        dive={dive}
+      />
     </group>
   );
 }

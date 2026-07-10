@@ -111,6 +111,78 @@ main.sphere-main:active {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+@media (max-width: 768px) {
+  .item__image {
+    inset: 2px;
+    border-radius: var(--tile-radius, 6px);
+  }
+
+  .item__image img {
+    object-fit: cover;
+    object-position: center top;
+  }
+
+  .sphere-root {
+    --viewer-pad: 12px;
+  }
+
+  .viewer .enlarge {
+    gap: 0.55rem;
+    max-width: min(86vw, 320px);
+  }
+
+  .enlarge__poster {
+    max-width: 100%;
+  }
+
+  .enlarge__title {
+    font-size: clamp(1.15rem, 5.5vw, 1.55rem);
+  }
+}
+
+.enlarge__close {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  z-index: 40;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 8, 8, 0.88);
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.enlarge__close:hover,
+.enlarge__close:focus-visible {
+  background: rgba(20, 20, 20, 0.95);
+  border-color: rgba(255, 255, 255, 0.5);
+  outline: none;
+}
+
+.enlarge__close span {
+  display: block;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .enlarge__close {
+    top: -0.5rem;
+    right: -0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.5rem;
+  }
+}
+
 .item__image:focus {
   outline: none;
 }

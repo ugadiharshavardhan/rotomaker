@@ -1,6 +1,6 @@
 "use client";
 
-import { getScene1Phase, getVfxLocalProgress } from "@/lib/cameraLens";
+import { getScene1Phase, getVfxLocalProgress, getCameraPhase } from "@/lib/cameraLens";
 
 export function CameraSectionOverlay({ progress }) {
   const phase = getScene1Phase(progress);
@@ -8,9 +8,11 @@ export function CameraSectionOverlay({ progress }) {
   if (phase !== "vfx") return null;
 
   const local = getVfxLocalProgress(progress);
+  const { dive } = getCameraPhase(progress);
   const fadeIn = Math.min(1, local / 0.1);
   const fadeOut = local > 0.88 ? Math.max(0, 1 - (local - 0.88) / 0.12) : 1;
-  const opacity = fadeIn * fadeOut;
+  const diveFade = dive > 0.06 ? Math.max(0, 1 - (dive - 0.06) / 0.24) : 1;
+  const opacity = fadeIn * fadeOut * diveFade;
 
   if (opacity <= 0.01) return null;
 

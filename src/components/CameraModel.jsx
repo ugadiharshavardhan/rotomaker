@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
+import { getCameraViewportLayout } from "@/lib/cameraLayout";
 
 useGLTF.preload(CAMERA_GLB_PATH);
 
-const TARGET_SIZE = 3.2;
-
-function centerAndScale(object) {
+function centerAndScale(object, targetSize) {
   const clone = object.clone(true);
 
   clone.traverse((child) => {
@@ -39,7 +38,7 @@ function centerAndScale(object) {
   clone.position.sub(center);
 
   const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-  const scale = TARGET_SIZE / maxDim;
+  const scale = targetSize / maxDim;
 
   return { node: clone, scale };
 }
@@ -47,11 +46,17 @@ function centerAndScale(object) {
 export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
   const groupRef = useRef();
   const damped = useRef({ y: 0, x: 0, floatY: 0 });
+  const wasVisible = useRef(false);
+  const { size } = useThree();
+  const layout = getCameraViewportLayout(size.width);
 
   const { scene, animations } = useGLTF(CAMERA_GLB_PATH);
   const { actions, names } = useAnimations(animations, groupRef);
 
-  const { node, scale } = useMemo(() => centerAndScale(scene), [scene]);
+  const { node, scale } = useMemo(
+    () => centerAndScale(scene, layout.targetSize),
+    [scene, layout.targetSize]
+  );
 
   useEffect(() => {
     names.forEach((name) => {
@@ -63,7 +68,10 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
   }, [actions, names]);
 
   useFrame((state, delta) => {
-    if (!groupRef.current || opacity <= 0.01) return;
+    if (!groupRef.current || opacity <= 0.01) {
+      wasVisible.current = false;
+      return;
+    }
 
     const t = state.clock.elapsedTime;
     const phase = Math.max(0, Math.min(1, (scrollProgress - 0.05) / 0.35));
@@ -72,15 +80,22 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
     const targetX = Math.sin(t * 0.55) * 0.03 + phase * 0.08;
     const targetFloatY = Math.sin(t * 0.9) * 0.06 + phase * 0.08;
 
-    const damp = 1 - Math.pow(0.001, delta);
-
-    damped.current.y = THREE.MathUtils.lerp(damped.current.y, targetY, damp);
-    damped.current.x = THREE.MathUtils.lerp(damped.current.x, targetX, damp);
-    damped.current.floatY = THREE.MathUtils.lerp(
-      damped.current.floatY,
-      targetFloatY,
-      damp
-    );
+    // Re-entering the section: snap pose so the model doesn't swell then settle
+    if (!wasVisible.current) {
+      damped.current.y = targetY;
+      damped.current.x = targetX;
+      damped.current.floatY = targetFloatY;
+      wasVisible.current = true;
+    } else {
+      const damp = 1 - Math.pow(0.001, delta);
+      damped.current.y = THREE.MathUtils.lerp(damped.current.y, targetY, damp);
+      damped.current.x = THREE.MathUtils.lerp(damped.current.x, targetX, damp);
+      damped.current.floatY = THREE.MathUtils.lerp(
+        damped.current.floatY,
+        targetFloatY,
+        damp
+      );
+    }
 
     groupRef.current.rotation.y = damped.current.y;
     groupRef.current.rotation.x = Math.sin(t * 0.25) * 0.02;
@@ -91,7 +106,12 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
   if (opacity <= 0.01) return null;
 
   return (
-    <group ref={groupRef} scale={scale} visible={opacity > 0.01}>
+    <group
+      ref={groupRef}
+      scale={scale}
+      position={[0, layout.modelOffsetY, 0]}
+      visible={opacity > 0.01}
+    >
       <primitive object={node} />
     </group>
   );

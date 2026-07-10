@@ -103,24 +103,26 @@ export function HollywoodCameraRig({ sceneState }) {
       );
     }
 
-    const globeApproach = globe
-      ? maxGlobeProgress.current / 0.38
-      : 0;
-    const globeEase = Math.min(1, globeApproach);
-    const globeSmooth = globeEase * globeEase * (3 - 2 * globeEase);
+    const globeApproach = globe ? maxGlobeProgress.current / 0.52 : 0;
+    const globeEase = Math.min(1, Math.max(0, globeApproach));
+    const globeSmooth = globeEase * globeEase * globeEase * (globeEase * (globeEase * 6 - 15) + 10);
 
     const globeLayout = getGlobeLayout(size.width);
+    const isMobileGlobe = size.width < 768;
 
     let baseZ = getBaseZ(globalProgress, scenes);
     if (globe) {
-      baseZ = lerp(14.2, 8.4, globeSmooth);
+      // Mobile: pull back so the centered earth reads as a full backdrop
+      baseZ = lerp(7.2, isMobileGlobe ? 9.6 : 8.4, globeSmooth);
     }
     const baseY = getBaseY(globalProgress, scenes);
     let baseX = getBaseX(globalProgress, scenes);
     let lookX = baseX * 0.5;
+    let lookY = 0.1;
     if (globe) {
       baseX = lerp(0, globeLayout.cameraX, globeSmooth);
       lookX = lerp(0, globeLayout.lookX, globeSmooth);
+      lookY = lerp(0.1, 0.1 + (globeLayout.worldY ?? 0) * 0.35, globeSmooth);
     } else if (portfolio) {
       lookX = 0;
     }
@@ -146,12 +148,12 @@ export function HollywoodCameraRig({ sceneState }) {
       baseZ + dolly - exitPull
     );
 
-    const camLerp = steadyCamera ? 0.1 : 0.075;
+    const camLerp = globe ? 0.045 : steadyCamera ? 0.1 : 0.075;
     camera.position.lerp(cameraTarget.current, camLerp);
 
     lookTarget.current.set(
       lookX,
-      0.1 - lookDown + (steadyCamera ? 0 : Math.cos(t * 0.08) * 0.08),
+      lookY - lookDown + (steadyCamera ? 0 : Math.cos(t * 0.08) * 0.08),
       0
     );
     camera.lookAt(lookTarget.current);

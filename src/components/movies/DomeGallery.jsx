@@ -566,6 +566,7 @@ export default function DomeGallery({
       poster.className = "enlarge__poster";
       poster.style.width = targetWidth;
       poster.style.height = targetHeight;
+      poster.style.position = "relative";
 
       const img = document.createElement("img");
       img.src = rawSrc;
@@ -573,6 +574,23 @@ export default function DomeGallery({
       img.referrerPolicy = "no-referrer";
       img.decoding = "async";
       poster.appendChild(img);
+
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "enlarge__close";
+      closeBtn.setAttribute("aria-label", "Close movie");
+      closeBtn.innerHTML = "<span aria-hidden=\"true\">×</span>";
+      closeBtn.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      closeBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeEnlarged();
+      });
+      poster.appendChild(closeBtn);
+
       overlay.appendChild(poster);
 
       if (rawTitle) {
@@ -582,7 +600,10 @@ export default function DomeGallery({
         overlay.appendChild(caption);
       }
 
-      overlay.addEventListener("pointerdown", (event) => event.stopPropagation());
+      overlay.addEventListener("pointerdown", (event) => {
+        if (event.target.closest(".enlarge__close")) return;
+        event.stopPropagation();
+      });
       viewerRef.current.appendChild(overlay);
       void overlay.offsetHeight;
 
@@ -614,6 +635,7 @@ export default function DomeGallery({
       }, 16);
     },
     [
+      closeEnlarged,
       enlargeTransitionMs,
       lockScroll,
       openedImageHeight,

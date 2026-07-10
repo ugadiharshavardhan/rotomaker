@@ -12,6 +12,9 @@ export const IMPOSSIBLE_SECTION_END = 0.88;
 export const CAMERA_ORBIT_END = HERO_END + (VFX_SECTION_END - HERO_END) * 0.48;
 export const CAMERA_END = VFX_SECTION_END;
 
+/** Light studio backdrop for the VFX camera block. */
+export const STUDIO_BACKDROP = "#e8e9ec";
+
 export function getScene1Phase(progress) {
   if (progress < HERO_END) return "hero";
   if (progress < VFX_SECTION_END) return "vfx";
@@ -32,7 +35,7 @@ export function shouldShowGlbCamera(progress, opacity = 1) {
 }
 
 export function getScene1Backdrop(progress) {
-  return getScene1Phase(progress) === "vfx" ? "#e8e9ec" : "#030303";
+  return getScene1Phase(progress) === "vfx" ? STUDIO_BACKDROP : "#030303";
 }
 
 export function getCameraZoom(scrollProgress) {

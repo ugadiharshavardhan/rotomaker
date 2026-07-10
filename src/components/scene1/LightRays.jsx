@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { Renderer, Program, Triangle, Mesh } from "ogl";
+import { Program, Triangle, Mesh } from "ogl";
+import { createOglRenderer, disposeOglCanvas } from "@/lib/oglRenderer";
 import "./LightRays.css";
 
 const DEFAULT_COLOR = "#ffffff";
@@ -82,19 +83,27 @@ export default function LightRays({
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
 
+    let cancelled = false;
+
     cleanupFunctionRef.current?.();
     cleanupFunctionRef.current = null;
 
     const initializeWebGL = async () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || cancelled) return;
 
       await new Promise((resolve) => setTimeout(resolve, 10));
-      if (!containerRef.current) return;
+      if (!containerRef.current || cancelled) return;
 
-      const renderer = new Renderer({
+      const renderer = createOglRenderer({
         dpr: Math.min(window.devicePixelRatio, 2),
         alpha: true,
       });
+
+      if (!renderer || cancelled || !containerRef.current) {
+        disposeOglCanvas(renderer);
+        return;
+      }
+
       rendererRef.current = renderer;
 
       const gl = renderer.gl;
@@ -288,17 +297,7 @@ void main() {
         }
 
         window.removeEventListener("resize", updatePlacement);
-
-        if (renderer) {
-          try {
-            const canvas = renderer.gl.canvas;
-            const loseContextExt = renderer.gl.getExtension("WEBGL_lose_context");
-            loseContextExt?.loseContext();
-            canvas?.parentNode?.removeChild(canvas);
-          } catch (error) {
-            console.warn("Error during WebGL cleanup:", error);
-          }
-        }
+        disposeOglCanvas(renderer);
 
         rendererRef.current = null;
         uniformsRef.current = null;
@@ -309,24 +308,11 @@ void main() {
     initializeWebGL();
 
     return () => {
+      cancelled = true;
       cleanupFunctionRef.current?.();
       cleanupFunctionRef.current = null;
     };
-  }, [
-    isVisible,
-    raysOrigin,
-    raysColor,
-    raysSpeed,
-    lightSpread,
-    rayLength,
-    pulsating,
-    fadeDistance,
-    saturation,
-    followMouse,
-    mouseInfluence,
-    noiseAmount,
-    distortion,
-  ]);
+  }, [isVisible]);
 
   useEffect(() => {
     if (!uniformsRef.current || !containerRef.current || !rendererRef.current) return;

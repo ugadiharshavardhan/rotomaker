@@ -40,24 +40,26 @@ export function Scene2Overlay({ progress, opacity = 1 }) {
           <MoviePosterCard key={movie.id} movie={movie} reveal={reveal} />
         </div>
 
-        <div
-          className="enhanced-movies__detail"
-          style={{
-            opacity: reveal,
-            transform: `translateY(${(1 - reveal) * 12}px)`,
-          }}
-        >
-          <span className="enhanced-movies__detail-label">NOW SHOWING</span>
-          <h3 className="enhanced-movies__detail-title">{movie.title}</h3>
-        </div>
+        <div className="enhanced-movies__content-footer">
+          <div
+            className="enhanced-movies__detail"
+            style={{
+              opacity: reveal,
+              transform: `translateY(${(1 - reveal) * 12}px)`,
+            }}
+          >
+            <span className="enhanced-movies__detail-label">NOW SHOWING</span>
+            <h3 className="enhanced-movies__detail-title">{movie.title}</h3>
+          </div>
 
-        <div className="enhanced-movies__progress" aria-hidden="true">
-          {MOVIE_CARDS.map((item, i) => (
-            <span
-              key={item.id}
-              className={`enhanced-movies__progress-dot${i === activeIndex ? " enhanced-movies__progress-dot--active" : ""}${i < activeIndex ? " enhanced-movies__progress-dot--done" : ""}`}
-            />
-          ))}
+          <div className="enhanced-movies__progress" aria-hidden="true">
+            {MOVIE_CARDS.map((item, i) => (
+              <span
+                key={item.id}
+                className={`enhanced-movies__progress-dot${i === activeIndex ? " enhanced-movies__progress-dot--active" : ""}${i < activeIndex ? " enhanced-movies__progress-dot--done" : ""}`}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
