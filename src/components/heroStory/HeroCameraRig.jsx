@@ -6,7 +6,8 @@ import * as THREE from "three";
 import { getHeroStoryState } from "@/lib/heroStory";
 
 /**
- * Story camera — character push during reveals; finale pull into 360° cinema hall.
+ * Story camera — character push during reveals;
+ * finale sits at the center of the 360° poster cylinder.
  */
 export function HeroCameraRig({ progress, mouse = { x: 0.5, y: 0.5 }, active = true }) {
   const { camera } = useThree();
@@ -30,28 +31,26 @@ export function HeroCameraRig({ progress, mouse = { x: 0.5, y: 0.5 }, active = t
     const my = (mouse.y - 0.5) * 2;
 
     if (s.phase === "finale") {
-      const open = Math.min(1, Math.max(0, (s.local - 0.02) / 0.65));
+      const open = Math.min(1, Math.max(0, (s.local - 0.02) / 0.55));
       const eased = open * open * (3 - 2 * open);
 
-      // Inside the circular hall: start nearer the front wall, pull to center
-      // so more of the 360° ring enters frame. Never stop moving.
-      camera.near = 0.1;
-      camera.far = 140;
-      const targetZ = THREE.MathUtils.lerp(-6.5, 0.35, eased);
-      const orbit = Math.sin(t * 0.07) * (0.14 + eased * 0.18);
-      const breathY = Math.cos(t * 0.09) * 0.05;
-      const breathZ = Math.sin(t * 0.055) * 0.08;
+      camera.near = 0.15;
+      camera.far = 80;
 
-      const targetX = orbit + mx * 0.06;
-      const targetY = 0.42 + breathY - my * 0.035;
+      // Stand inside the cylinder: slight pull toward center, slow orbit
+      // Wider FOV so the packed wall fills the frame on all sides
+      const targetZ = THREE.MathUtils.lerp(1.2, 0.15, eased);
+      const orbit = Math.sin(t * 0.06) * (0.2 + eased * 0.25);
+      const breathY = Math.cos(t * 0.08) * 0.06;
 
-      camera.position.x += (targetX - camera.position.x) * 0.028;
-      camera.position.y += (targetY - camera.position.y) * 0.028;
-      camera.position.z += (targetZ + breathZ - camera.position.z) * 0.024;
+      camera.position.x += (orbit + mx * 0.08 - camera.position.x) * 0.03;
+      camera.position.y += (0.35 + breathY - my * 0.04 - camera.position.y) * 0.03;
+      camera.position.z += (targetZ - camera.position.z) * 0.026;
 
-      look.current.set(mx * 0.05, 0.18 - my * 0.03, -12 - eased * 8);
+      // Look forward into the curved wall (logo is DOM overlay on top)
+      look.current.set(mx * 0.15, 0.1 - my * 0.05, -10);
       camera.lookAt(look.current);
-      camera.fov = THREE.MathUtils.lerp(48, 42, eased);
+      camera.fov = THREE.MathUtils.lerp(58, 52, eased);
       camera.updateProjectionMatrix();
       return;
     }
