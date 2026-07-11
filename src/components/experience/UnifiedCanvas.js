@@ -9,7 +9,7 @@ import { CinematicEffects } from "@/components/lighting/CinematicEffects";
 import { Scene1World } from "@/components/scene1/Scene1World";
 import { Scene } from "@/components/Scene";
 import { makeLazyWorld } from "@/components/experience/LazySceneWorld";
-import { GlbWarmup } from "@/components/preload/GlbWarmup";
+import { GlbWarmup, GlbWarmupFallback } from "@/components/preload/GlbWarmup";
 import { CanvasErrorBoundary } from "@/components/experience/CanvasErrorBoundary";
 import { getSceneBounds, SCENES } from "@/lib/sceneConfig";
 import {
@@ -137,24 +137,28 @@ function WorldContent({ sceneState }) {
       )}
 
       {showIntroWorld && (
-        <Scene1World
-          progress={scenes[0].progress}
-          opacity={scenes[0].opacity}
-          mouse={mouse}
-        />
+        <Suspense fallback={null}>
+          <Scene1World
+            progress={scenes[0].progress}
+            opacity={scenes[0].opacity}
+            mouse={mouse}
+          />
+        </Suspense>
       )}
 
       {mountCameraScene && !isStoryChapter && showIntroWorld && (
-        <Scene
-          scrollProgress={scenes[0].progress}
-          opacity={
-            forceWarmWorlds
-              ? Math.max(isVfxChapter ? scene1Opacity : 0.001, 0.001)
-              : isVfxChapter
-                ? scene1Opacity
-                : 0
-          }
-        />
+        <Suspense fallback={null}>
+          <Scene
+            scrollProgress={scenes[0].progress}
+            opacity={
+              forceWarmWorlds
+                ? Math.max(isVfxChapter ? scene1Opacity : 0.001, 0.001)
+                : isVfxChapter
+                  ? scene1Opacity
+                  : 0
+            }
+          />
+        </Suspense>
       )}
 
       <LazyScene2World
@@ -257,12 +261,13 @@ function ExperienceCanvas({ sceneState, onUnavailable }) {
         );
       }}
       dpr={[1, maxDpr]}
-      camera={{ fov: 45, near: 0.1, far: 100, position: [0, 1.2, 5.5] }}
+      camera={{ fov: 45, near: 0.1, far: 200, position: [0, 1.2, 5.5] }}
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<GlbWarmupFallback onReady={sceneState.onGlbWarm} />}>
         <GlbWarmup onReady={sceneState.onGlbWarm} />
-        <WorldContent sceneState={sceneState} />
       </Suspense>
+      {/* Isolated from GLB / texture Suspense — one failed remote image must not blank the whole canvas */}
+      <WorldContent sceneState={sceneState} />
     </Canvas>
   );
 }

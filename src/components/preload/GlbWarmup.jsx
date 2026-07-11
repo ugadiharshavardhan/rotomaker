@@ -27,3 +27,12 @@ export function GlbWarmup({ onReady }) {
 
   return null;
 }
+
+/** Unlocks loading if the camera GLB never resolves (404 / network). */
+export function GlbWarmupFallback({ onReady }) {
+  useEffect(() => {
+    const id = window.setTimeout(() => onReady?.(), 2500);
+    return () => window.clearTimeout(id);
+  }, [onReady]);
+  return null;
+}

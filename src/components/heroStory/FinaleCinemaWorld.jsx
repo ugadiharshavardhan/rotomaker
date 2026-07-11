@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
@@ -9,6 +9,7 @@ import * as THREE from "three";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
 import { MOVIE_LIBRARY_CATEGORIES } from "@/lib/moviesData";
 import { HERO_CHARACTERS } from "@/lib/heroStory";
+import { useSafeTextures, warmTextureUrls } from "@/components/portfolio/useSafeTextures";
 
 const SHARED_PLANE = new THREE.PlaneGeometry(1, 1);
 const _obj = new THREE.Object3D();
@@ -293,17 +294,27 @@ function FinalePostFX() {
 
 function FinaleTextures({ children }) {
   const urls = useMemo(() => getFinalePosterUrls(), []);
-  const textures = useTexture(urls);
+  // Progressive, non-suspending — a dead remote poster must not blank the wall
+  const loaded = useSafeTextures(urls);
+
+  useEffect(() => {
+    warmTextureUrls(urls);
+  }, [urls]);
+
   const list = useMemo(() => {
-    const arr = Array.isArray(textures) ? textures : [textures];
-    arr.forEach((tex) => {
+    if (!loaded) return null;
+    const ready = loaded.filter(Boolean);
+    if (!ready.length) return null;
+    ready.forEach((tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
       tex.wrapS = THREE.ClampToEdgeWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
     });
-    return arr;
-  }, [textures]);
+    return ready;
+  }, [loaded]);
+
+  if (!list?.length) return null;
   return children(list);
 }
 
@@ -325,6 +336,8 @@ export function FinaleCinemaWorld({ local = 0 }) {
         <FinaleTextures>
           {(textures) => <CinemaWall textures={textures} open={eased} />}
         </FinaleTextures>
+      </Suspense>
+      <Suspense fallback={null}>
         <FinaleSilhouettes open={eased} />
       </Suspense>
 

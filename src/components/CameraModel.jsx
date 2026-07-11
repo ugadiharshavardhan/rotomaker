@@ -10,62 +10,70 @@ import { getLensFaceAmount, CAMERA_MODEL_SIDE_YAW, CAMERA_MODEL_FRONT_YAW } from
 
 useGLTF.preload(CAMERA_GLB_PATH);
 
-function centerAndScale(object, targetSize) {
-  const clone = object.clone(true);
-
-  clone.traverse((child) => {
-    if (child.isMesh) {
+/**
+ * Use the original GLTF scene (not a clone) so skeleton animations stay bound.
+ */
+function fitSceneOnce(scene, targetSize, state) {
+  if (!state.fitted) {
+    scene.traverse((child) => {
+      if (!child.isMesh) return;
       child.castShadow = true;
       child.receiveShadow = true;
-      if (child.material) {
-        const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material];
-        materials.forEach((mat) => {
-          mat.needsUpdate = true;
-          if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
-          if ("envMapIntensity" in mat) mat.envMapIntensity = 1.2;
-          if ("metalness" in mat) mat.metalness = Math.min(mat.metalness ?? 0.5, 0.9);
-          if ("roughness" in mat) mat.roughness = Math.max(mat.roughness ?? 0.5, 0.25);
-        });
-      }
-    }
-  });
+      if (!child.material) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((mat) => {
+        mat.needsUpdate = true;
+        if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
+        if ("envMapIntensity" in mat) mat.envMapIntensity = 1.2;
+        if ("metalness" in mat) mat.metalness = Math.min(mat.metalness ?? 0.5, 0.9);
+        if ("roughness" in mat) mat.roughness = Math.max(mat.roughness ?? 0.5, 0.25);
+      });
+    });
 
-  const box = new THREE.Box3().setFromObject(clone);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    scene.position.sub(center);
+    state.baseMax = Math.max(size.x, size.y, size.z, 0.001);
+    state.fitted = true;
+  }
 
-  clone.position.sub(center);
-
-  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-  const scale = targetSize / maxDim;
-
-  return { node: clone, scale };
+  return targetSize / state.baseMax;
 }
 
 export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
   const groupRef = useRef();
+  const modelRef = useRef();
+  const fitState = useRef({ fitted: false, baseMax: 1 });
   const damped = useRef({ y: 0, x: 0, floatY: 0, pitch: 0 });
   const wasVisible = useRef(false);
   const { size } = useThree();
   const layout = getCameraViewportLayout(size.width, size.height);
 
   const { scene, animations } = useGLTF(CAMERA_GLB_PATH);
-  const { actions, names } = useAnimations(animations, groupRef);
+  // Bind mixer to the actual animated root — cloning broke clips in production
+  const { actions, names } = useAnimations(animations, modelRef);
 
-  const { node, scale } = useMemo(
-    () => centerAndScale(scene, layout.targetSize),
+  const scale = useMemo(
+    () => fitSceneOnce(scene, layout.targetSize, fitState.current),
     [scene, layout.targetSize]
   );
 
   useEffect(() => {
+    if (!names?.length) return undefined;
     names.forEach((name) => {
       const action = actions[name];
-      if (action) {
-        action.reset().fadeIn(0.3).play();
-      }
+      if (!action) return;
+      action.reset();
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.clampWhenFinished = false;
+      action.fadeIn(0.35).play();
     });
+    return () => {
+      names.forEach((name) => {
+        actions[name]?.fadeOut(0.2);
+      });
+    };
   }, [actions, names]);
 
   useFrame((state, delta) => {
@@ -78,8 +86,6 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
     const faceLens = getLensFaceAmount(scrollProgress);
     const idle = 1 - faceLens;
 
-    // Side profile at rest → rotate +90° so the lens faces the viewer.
-    // No lateral orbit yaw — that read as the model drifting left on fast scroll.
     const showcaseYaw =
       CAMERA_MODEL_SIDE_YAW + Math.sin(t * 0.22) * 0.008 * idle;
     const targetY = THREE.MathUtils.lerp(
@@ -90,7 +96,6 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
     const targetFloatY = Math.sin(t * 0.5) * 0.015 * idle;
     const targetPitch = Math.sin(t * 0.18) * 0.008 * idle;
 
-    // Track scroll closely during the turn so damping doesn't make it feel like a late snap
     const dampPower = faceLens > 0.05 ? 0.00012 : 0.00035;
     const damp = 1 - Math.pow(dampPower, delta);
 
@@ -132,7 +137,7 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
       position={[0, layout.modelOffsetY, 0]}
       visible={opacity > 0.01}
     >
-      <primitive object={node} />
+      <primitive ref={modelRef} object={scene} />
     </group>
   );
 }

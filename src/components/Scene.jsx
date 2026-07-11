@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { Suspense, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CameraModel } from "./CameraModel";
@@ -162,13 +162,15 @@ export function Scene({ scrollProgress = 0, opacity = 1 }) {
   if (sceneOpacity <= 0.01) return null;
 
   return (
-    <group visible={sceneOpacity > 0.01}>
-      <CameraStudioContent
-        scrollProgress={scrollProgress}
-        sceneOpacity={sceneOpacity}
-        modelFade={modelFade}
-        dive={dive}
-      />
+    <group visible={opacity > 0.01}>
+      <Suspense fallback={null}>
+        <CameraStudioContent
+          scrollProgress={scrollProgress}
+          sceneOpacity={sceneOpacity}
+          modelFade={modelFade}
+          dive={dive}
+        />
+      </Suspense>
     </group>
   );
 }
