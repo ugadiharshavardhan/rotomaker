@@ -6,8 +6,7 @@ import { useTexture } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
-import { MOVIE_IMAGES } from "@/lib/portfolioData";
-import { MOVIE_LIBRARY_CATEGORIES } from "@/lib/moviesData";
+import { MOVIE_LIBRARY_IMAGES } from "@/lib/moviesData";
 import { HERO_CHARACTERS } from "@/lib/heroStory";
 import { useSafeTextures, warmTextureUrls } from "@/components/portfolio/useSafeTextures";
 
@@ -17,42 +16,36 @@ const _obj = new THREE.Object3D();
 /** Portrait poster cell — width / height */
 const ASPECT = 0.68;
 
-/** Single cylindrical hall — extra rings caused a ghost wall behind the first. */
+/** Dense cylindrical hall — exact row/column grid, no jitter. */
 const RING_DEFS = [
-  { radius: 11, rows: 6, speed: 0.01, dir: 1, opacity: 1, gap: 0.035 },
+  { radius: 11, rows: 6, speed: 0.01, dir: 1, opacity: 1 },
 ];
 
-function hash01(n) {
-  const x = Math.sin(n * 127.1) * 43758.5453;
-  return x - Math.floor(x);
+/**
+ * Our Movies section posters — same source as the movies library / dome.
+ */
+export function getFinalePosterUrls() {
+  return MOVIE_LIBRARY_IMAGES.length
+    ? [...MOVIE_LIBRARY_IMAGES]
+    : ["/cards/spiderman.jpg"];
 }
 
-/** Every unique poster in the app — local cards + full movie library. */
-export function getFinalePosterUrls() {
-  const library = MOVIE_LIBRARY_CATEGORIES.flatMap((category) =>
-    category.movies.map((movie) => movie.image).filter(Boolean)
-  );
-  const seen = new Set();
-  const urls = [];
-  for (const url of [...MOVIE_IMAGES, ...library]) {
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    urls.push(url);
-  }
-  return urls.length ? urls : ["/cards/spiderman.jpg"];
+export function getFinaleWarmUrls() {
+  return getFinalePosterUrls();
 }
 
 /**
- * Neat cylindrical tile grid — full 360°, stacked rows, almost no gaps.
+ * Exact cylindrical tile grid — aligned rows & columns, flush edges, no tilt.
  */
 function buildDenseRing(ringIndex, def, texCount) {
-  const { radius, rows, gap, opacity } = def;
-  const cellH = 2.15;
-  const cellW = cellH * ASPECT;
-  const cols = Math.max(28, Math.round((2 * Math.PI * radius) / (cellW + gap)));
-  const exactW = (2 * Math.PI * radius) / cols - gap;
+  const { radius, rows, opacity } = def;
+  const targetH = 2.15;
+  const targetW = targetH * ASPECT;
+  // Columns chosen so tiles wrap the circle edge-to-edge
+  const cols = Math.max(28, Math.round((2 * Math.PI * radius) / targetW));
+  const exactW = (2 * Math.PI * radius) / cols;
   const exactH = exactW / ASPECT;
-  const rowPitch = exactH + gap;
+  const rowPitch = exactH;
 
   const items = [];
   let texCursor = ringIndex * 19;
@@ -60,27 +53,21 @@ function buildDenseRing(ringIndex, def, texCount) {
   for (let row = 0; row < rows; row++) {
     const y = (row - (rows - 1) / 2) * rowPitch;
     for (let col = 0; col < cols; col++) {
-      const seed = ringIndex * 1009 + row * 131 + col * 17;
-      const h = hash01(seed);
-      const h2 = hash01(seed + 3.1);
-
       const angle = (col / cols) * Math.PI * 2;
       const x = Math.sin(angle) * radius;
       const z = -Math.cos(angle) * radius;
+      // Face the center — no X/Z tilt so row edges stay level
       const rotY = Math.atan2(x, z) + Math.PI;
-
-      const hero = col % 12 === 0 && (row === 2 || row === 3);
-      const scaleMul = hero ? 1.28 : 1;
 
       items.push({
         x,
-        y: y + (h - 0.5) * 0.03,
+        y,
         z,
         rotY,
-        rotX: (h - 0.5) * 0.02,
-        rotZ: (h2 - 0.5) * 0.02,
-        scaleW: exactW * scaleMul,
-        scaleH: exactH * scaleMul,
+        rotX: 0,
+        rotZ: 0,
+        scaleW: exactW,
+        scaleH: exactH,
         tex: texCursor % texCount,
         opacity,
       });
@@ -90,7 +77,7 @@ function buildDenseRing(ringIndex, def, texCount) {
   return items;
 }
 
-function PosterBatch({ texture, items, opacity }) {
+function PosterBatch({ texture, items }) {
   const mesh = useRef();
   const count = items.length;
 
@@ -115,9 +102,7 @@ function PosterBatch({ texture, items, opacity }) {
       ref={mesh}
       args={[SHARED_PLANE, undefined, count]}
       frustumCulled={false}
-      visible={opacity > 0.02}
     >
-      {/* Opaque JPGs — transparency let the far side of the cylinder ghost through */}
       <meshBasicMaterial
         map={texture}
         toneMapped={false}
@@ -150,17 +135,14 @@ function PosterRing({ def, ringIndex, textures, open }) {
   });
 
   const reveal = Math.min(1, Math.max(0, (open - ringIndex * 0.08) / 0.3));
-  const ringOpacity = def.opacity * Math.min(1, 0.35 + open * 0.65) * reveal;
-  if (reveal < 0.02) return null;
 
   return (
-    <group ref={group}>
+    <group ref={group} visible={reveal > 0.02}>
       {byTex.map((groupItems, texIndex) => (
         <PosterBatch
           key={texIndex}
           texture={textures[texIndex]}
           items={groupItems}
-          opacity={ringOpacity}
         />
       ))}
     </group>
@@ -294,54 +276,59 @@ function FinalePostFX() {
 
 function FinaleTextures({ children }) {
   const urls = useMemo(() => getFinalePosterUrls(), []);
-  // Progressive, non-suspending — a dead remote poster must not blank the wall
   const loaded = useSafeTextures(urls);
+  const frozen = useRef(null);
 
   useEffect(() => {
     warmTextureUrls(urls);
   }, [urls]);
 
   const list = useMemo(() => {
+    if (frozen.current) return frozen.current;
     if (!loaded) return null;
     const ready = loaded.filter(Boolean);
-    if (!ready.length) return null;
+    // Freeze once enough Our Movies posters are ready (don't wait forever on slow CDNs)
+    const need = Math.min(urls.length, 10);
+    if (ready.length < need) return null;
     ready.forEach((tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 4;
+      tex.anisotropy = 2;
       tex.wrapS = THREE.ClampToEdgeWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
     });
+    frozen.current = ready;
     return ready;
-  }, [loaded]);
+  }, [loaded, urls.length]);
 
   if (!list?.length) return null;
   return children(list);
 }
 
 /**
- * True 360° Wall of Cinema — dense tiled cylinders using every movie in the app.
+ * True 360° Wall of Cinema — pre-mountable so the first scroll-in does not hitch.
  */
-export function FinaleCinemaWorld({ local = 0 }) {
-  const open = Math.min(1, Math.max(0, (local - 0.02) / 0.55));
+export function FinaleCinemaWorld({ local = 0, active = true }) {
+  const open = active ? Math.min(1, Math.max(0, (local - 0.02) / 0.55)) : 0;
   const eased = open * open * (3 - 2 * open);
 
   return (
-    <group>
-      <color attach="background" args={["#000000"]} />
-      <fog attach="fog" args={["#000000", 16, 42]} />
+    <group visible={active}>
+      {active && <color attach="background" args={["#000000"]} />}
+      {active && <fog attach="fog" args={["#000000", 16, 42]} />}
       <FinaleLights />
-      <FinaleParticles open={eased} />
+      {active && <FinaleParticles open={eased} />}
 
-      <Suspense fallback={null}>
-        <FinaleTextures>
-          {(textures) => <CinemaWall textures={textures} open={eased} />}
-        </FinaleTextures>
-      </Suspense>
-      <Suspense fallback={null}>
-        <FinaleSilhouettes open={eased} />
-      </Suspense>
+      <FinaleTextures>
+        {(textures) => <CinemaWall textures={textures} open={Math.max(eased, 0.001)} />}
+      </FinaleTextures>
 
-      <FinalePostFX />
+      {active && (
+        <Suspense fallback={null}>
+          <FinaleSilhouettes open={eased} />
+        </Suspense>
+      )}
+
+      {active && eased > 0.12 && <FinalePostFX />}
     </group>
   );
 }

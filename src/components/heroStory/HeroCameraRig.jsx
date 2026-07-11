@@ -30,8 +30,13 @@ export function HeroCameraRig({ progress, mouse = { x: 0.5, y: 0.5 }, active = t
     const mx = (mouse.x - 0.5) * 2;
     const my = (mouse.y - 0.5) * 2;
 
-    if (s.phase === "finale") {
-      const open = Math.min(1, Math.max(0, (s.local - 0.02) / 0.55));
+    if (s.phase === "finale" || s.phase === "unknown" || (s.phase === "wind" && (s.cinemaOpen ?? 0) > 0.15)) {
+      const open =
+        s.phase === "unknown"
+          ? 1
+          : s.phase === "wind"
+            ? Math.max(0, s.cinemaOpen ?? 0)
+            : Math.min(1, Math.max(0, (s.local - 0.02) / 0.55));
       const eased = open * open * (3 - 2 * open);
 
       camera.near = 0.15;

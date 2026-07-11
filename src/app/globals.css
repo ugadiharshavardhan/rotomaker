@@ -11,6 +11,13 @@
   --accent-dim: rgba(255, 255, 255, 0.35);
   --accent-glow: rgba(255, 255, 255, 0.12);
   --accent-muted: rgba(255, 255, 255, 0.55);
+  /*
+   * Display face: drop licensed Apoc Revelations files into /public/fonts
+   * (see public/fonts/README.md). Until then we use Bebas — no @font-face
+   * requests so the console stays clean of 404s.
+   */
+  --font-display: var(--font-bebas), Impact, "Times New Roman", serif;
+  --font-apoc: var(--font-display);
 }
 
 @theme inline {
@@ -19,7 +26,7 @@
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-bebas);
+  --font-display: var(--font-bebas), Impact, serif;
 }
 
 * {
@@ -113,7 +120,7 @@ body.experience-loading {
 
 .experience-loader__brand {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 6vw, 2.4rem);
   letter-spacing: 0.18em;
   color: #ffffff;
@@ -538,7 +545,7 @@ body.experience-cursor * {
   align-items: baseline;
   justify-content: center;
   gap: 0.02em;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3.75rem, 14vw, 10.5rem);
   font-weight: 400;
   line-height: 0.86;
@@ -976,7 +983,7 @@ body.experience-cursor * {
   display: block;
   width: 100%;
   text-align: center;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.25rem, 9vw, 6.5rem);
   line-height: 0.86;
   letter-spacing: 0.06em;
@@ -1260,7 +1267,7 @@ body.experience-cursor * {
   flex-direction: column;
   align-items: center;
   gap: 0.1em;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-weight: 400;
   line-height: 0.85;
   letter-spacing: 0.04em;
@@ -1340,7 +1347,7 @@ body.experience-cursor * {
 
 .services-section__title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3rem, 8vw, 5.5rem);
   line-height: 0.9;
   letter-spacing: 0.04em;
@@ -1405,7 +1412,7 @@ body.experience-cursor * {
 
 .service-card__title {
   margin: 0 0 0.5rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.25rem, 2.2vw, 1.75rem);
   line-height: 1;
   letter-spacing: 0.03em;
@@ -1478,7 +1485,7 @@ body.experience-cursor * {
 
 .camera-section-overlay__headline {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.5rem);
   line-height: 0.95;
   letter-spacing: 0.04em;
@@ -1772,11 +1779,31 @@ body.experience-cursor * {
 
 .hero-story__title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.01em;
+  font-family: var(--font-display);
   font-size: clamp(3.4rem, 12vw, 7.8rem);
+  font-weight: 400;
   line-height: 0.9;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #ffffff;
+}
+
+.hero-story__brand--intro .hero-story__title {
+  overflow: visible;
+}
+
+.hero-story__letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(42px) scale(0.86);
+  filter: blur(8px);
+  animation: hero-letter-reveal 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
 }
 
 .hero-story__tagline {
@@ -1818,7 +1845,7 @@ body.experience-cursor * {
 
 .hero-story__credits-name {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3.2rem, 8vw, 5.75rem);
   letter-spacing: 0.04em;
   line-height: 0.9;
@@ -1957,7 +1984,7 @@ body.experience-cursor * {
 .gallery-hero__title {
   margin: 0;
   max-width: 14ch;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.75rem, 9vw, 6.5rem);
   line-height: 0.92;
   letter-spacing: 0.04em;
@@ -2121,7 +2148,7 @@ body.experience-cursor * {
 
 .portfolio-overlay__section-title {
   margin: 0.35rem 0 0.5rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3rem, 10vw, 5.5rem);
   line-height: 0.88;
   letter-spacing: 0.06em;
@@ -2195,7 +2222,7 @@ body.experience-cursor * {
 }
 
 .movie-titles-left__name {
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(0.95rem, 1.65vw, 1.35rem);
   letter-spacing: 0.05em;
   line-height: 1.05;
@@ -2295,7 +2322,7 @@ body.experience-cursor * {
 
 .portfolio-overlay__title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 8vw, 4.5rem);
   line-height: 0.9;
   letter-spacing: 0.04em;
@@ -2439,7 +2466,7 @@ body.experience-cursor * {
 }
 
 .pipeline-section__title-main {
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(4rem, 14vw, 9rem);
   line-height: 0.85;
   letter-spacing: 0.04em;
@@ -2475,7 +2502,7 @@ body.experience-cursor * {
 
 .scene2-line {
   display: block;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3rem, 12vw, 9rem);
   line-height: 0.85;
   color: #fff;
@@ -2498,7 +2525,7 @@ body.experience-cursor * {
   fill: none;
   stroke: rgba(255, 255, 255, 0.08);
   stroke-width: 1;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: 64px;
   text-anchor: middle;
 }
@@ -2670,7 +2697,7 @@ body.experience-cursor * {
 .services-flow__card-title {
   max-width: min(92vw, 56rem);
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 4vw, 2.75rem);
   letter-spacing: 0.06em;
   line-height: 1;
@@ -2723,7 +2750,7 @@ body.experience-cursor * {
   display: block;
   width: 100%;
   text-align: center;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.85rem, 5.2vw, 3.85rem);
   font-weight: 400;
   letter-spacing: 0.2em;
@@ -2809,7 +2836,7 @@ body.experience-cursor * {
 
 .services-stack-card__title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.65rem, 3.8vw, 2.45rem);
   letter-spacing: 0.06em;
   line-height: 1;
@@ -3493,7 +3520,7 @@ body.experience-cursor * {
 }
 
 .scene4-text {
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   text-align: center;
   transition: filter 0.2s ease;
   max-width: 90vw;
@@ -3608,7 +3635,7 @@ body.experience-cursor * {
 
 .scene5-heading {
   margin: 0 0 1rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 6vw, 4.5rem);
   letter-spacing: 0.04em;
   color: #ffffff;
@@ -3900,7 +3927,7 @@ body.experience-cursor * {
 
 .scene6-title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.5rem);
   letter-spacing: 0.04em;
 }
@@ -4062,7 +4089,7 @@ body.experience-cursor * {
 
 .scene6-detail__title {
   margin: 0 0 1.25rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.8rem, 4vw, 2.8rem);
   letter-spacing: 0.03em;
 }
@@ -4134,7 +4161,7 @@ body.experience-cursor * {
 
 .scene7-title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.5rem);
 }
 
@@ -4210,7 +4237,7 @@ body.experience-cursor * {
 
 .scene7-holo__info h3 {
   margin: 0 0 0.35rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: 1.4rem;
   letter-spacing: 0.05em;
   color: var(--accent);
@@ -4398,7 +4425,7 @@ body.experience-cursor * {
 
 .scene8-title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.5rem);
 }
 
@@ -4855,7 +4882,7 @@ body.experience-cursor * {
 }
 
 .scene9-stat__value {
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(5rem, 18vw, 12rem);
   line-height: 0.85;
   color: #fff;
@@ -5052,7 +5079,7 @@ body.experience-cursor * {
 .story-flow__title {
   margin: 0;
   max-width: min(92vw, 34rem);
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.85rem, 4.5vw, 2.85rem);
   letter-spacing: 0.06em;
   line-height: 1;
@@ -5223,7 +5250,7 @@ body.dg-scroll-lock {
 
 .movies-flow__title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.85rem, 4.5vw, 2.85rem);
   letter-spacing: 0.06em;
   line-height: 1.05;
@@ -5420,7 +5447,7 @@ body.dg-scroll-lock {
 
 .scene10-title {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.5rem);
   letter-spacing: 0.04em;
 }
@@ -5621,7 +5648,7 @@ body.dg-scroll-lock {
 
 .scene11-title {
   margin: 0 0 1rem;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(3rem, 10vw, 6rem);
   letter-spacing: 0.04em;
 }
@@ -5776,7 +5803,7 @@ body.dg-scroll-lock {
 
 .scene12-headline {
   margin: 0;
-  font-family: var(--font-bebas), Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 8vw, 5.5rem);
   letter-spacing: 0.03em;
   line-height: 0.95;

@@ -81,13 +81,17 @@ const fogFrag = /* glsl */ `
     // Fade to nothing at plane edges so quads are invisible
     float softEdge = 1.0 - smoothstep(0.85, 1.45, radial);
 
-    // Character corridor (narrow — fog stays around figure)
-    float cx = 0.5 + uBodySide * 0.2;
+    // Character corridor — clear fog around the standee while body reveals
+    float cx = 0.5 + uBodySide * 0.22;
     float bodyInfluence = clamp(uBodyReveal, 0.0, 1.0);
     float dx = abs(vUv.x - cx);
-    float bodyWidth = mix(0.05, 0.12, smoothstep(0.7, 0.25, vUv.y)) * bodyInfluence;
-    float open = smoothstep(bodyWidth, bodyWidth + 0.12 + uParting * 0.1, dx);
-    float corridor = mix(1.0, mix(0.55, open, 0.75), clamp(uParting * 0.55 + bodyInfluence * 0.45, 0.0, 1.0));
+    float bodyWidth = mix(0.1, 0.24, smoothstep(0.75, 0.2, vUv.y)) * bodyInfluence;
+    float open = smoothstep(bodyWidth, bodyWidth + 0.2 + uParting * 0.18, dx);
+    float corridor = mix(
+      1.0,
+      mix(0.12, open, 0.92),
+      clamp(uParting * 0.75 + bodyInfluence * 0.9, 0.0, 1.0)
+    );
 
     float density = clouds * softEdge * corridor * uOpacity * uDensity * max(uApproach, 0.15);
     float alpha = clamp(density, 0.0, 0.72);

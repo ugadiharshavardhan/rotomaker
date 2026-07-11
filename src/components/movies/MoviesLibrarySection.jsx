@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { MOVIE_LIBRARY_CATEGORIES, MOVIE_LIBRARY_PANELS } from "@/lib/moviesData";
+import { MOVIE_LIBRARY_CATEGORIES, MOVIE_LIBRARY_PANELS, MOVIE_LIBRARY_IMAGES } from "@/lib/moviesData";
 import { getMoviesPanelIndex } from "@/lib/statsScroll";
 import { warmImageCache } from "@/lib/moviesImageCache";
 import { getMoviesDomeMinRadius } from "@/lib/viewport";
@@ -12,13 +12,7 @@ const DomeGallery = dynamic(() => import("./DomeGallery"), {
   loading: () => null,
 });
 
-const ALL_MOVIES_LIBRARY_IMAGES = [
-  ...new Set(
-    MOVIE_LIBRARY_CATEGORIES.flatMap((category) =>
-      category.movies.map((movie) => movie.image).filter(Boolean)
-    )
-  ),
-];
+const ALL_MOVIES_LIBRARY_IMAGES = MOVIE_LIBRARY_IMAGES;
 
 function CategoryHeader({ category, motion }) {
   return (

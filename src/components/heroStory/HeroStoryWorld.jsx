@@ -9,12 +9,13 @@ import {
   HERO_STORY_LIGHT,
   getHeroStoryState,
 } from "@/lib/heroStory";
+import { warmTextureUrls } from "@/components/portfolio/useSafeTextures";
+import { getFinalePosterUrls, getFinaleWarmUrls, FinaleCinemaWorld } from "./FinaleCinemaWorld";
 import { VolumetricFog } from "./VolumetricFog";
 import { HeroParticles } from "./HeroParticles";
 import { HeroCharacterLayer } from "./HeroCharacter";
 import { HeroCameraRig } from "./HeroCameraRig";
 import { HeroBackLight } from "./HeroBackLight";
-import { FinaleCinemaWorld } from "./FinaleCinemaWorld";
 
 function HeroAtmosphere({ lightBehind }) {
   return (
@@ -26,15 +27,22 @@ function HeroAtmosphere({ lightBehind }) {
 }
 
 /**
- * Keep story + finale both mounted so scrolling back restores characters
- * without remounting textures / Suspense.
+ * Opening = 360° cinema wall (replaces flat black brand card).
+ * Then fog character reveals, then wall returns for the climax.
  */
 export function HeroStoryWorld({ progress = 0, opacity = 1, mouse }) {
   const state = useMemo(() => getHeroStoryState(progress), [progress]);
   const isFinale = state.phase === "finale";
+  const cinemaOpen = state.cinemaOpen ?? 0;
+  const showCinema = cinemaOpen > 0.02;
   const fogApproach = state.fogApproach ?? (state.fogDensity > 0 ? 1 : 0);
-  const showFog = !isFinale && fogApproach > 0.02 && state.fogDensity > 0.02;
-  const showStory = !isFinale;
+  const showStory = !showCinema || state.phase === "wind" || state.phase === "character";
+  /* Fog only on the wind approach — characters get lighting, not mist */
+  const showFog =
+    state.phase === "wind" &&
+    fogApproach > 0.02 &&
+    state.fogDensity > 0.02;
+  const showCharacters = state.phase === "character";
 
   useEffect(() => {
     HERO_CHARACTERS.forEach((c) => {
@@ -44,52 +52,72 @@ export function HeroStoryWorld({ progress = 0, opacity = 1, mouse }) {
         /* ignore */
       }
     });
+    warmTextureUrls(getFinalePosterUrls());
   }, []);
 
+  useEffect(() => {
+    if (!showCinema && state.phase !== "character") return;
+    warmTextureUrls(getFinaleWarmUrls());
+  }, [showCinema, state.phase]);
+
   if (opacity <= 0.01) return null;
+
+  const wallLocal =
+    state.phase === "unknown"
+      ? 1
+      : state.phase === "wind"
+        ? Math.max(0.05, cinemaOpen)
+        : state.phase === "finale"
+          ? state.local
+          : 0;
 
   return (
     <group visible={opacity > 0.01} userData={{ audioReady: true, chapter: "enter-the-unknown" }}>
       <color attach="background" args={[HERO_STORY_BG]} />
       <HeroCameraRig progress={progress} mouse={mouse} active={opacity > 0.02} />
 
-      {/* Character fog story — stays mounted for scroll-back */}
-      <group visible={showStory}>
-        <HeroAtmosphere lightBehind={state.lightBehind} />
+      {(showStory || showCharacters) && (
+        <group visible={!showCinema || state.phase === "wind"}>
+          <HeroAtmosphere lightBehind={state.lightBehind} />
 
-        {fogApproach > 0.15 && (
-          <HeroParticles density={0.45 * fogApproach} wind={state.wind} />
-        )}
+          {state.phase === "wind" && fogApproach > 0.15 && (
+            <HeroParticles density={0.45 * fogApproach} wind={state.wind} />
+          )}
 
-        {showFog && (
-          <VolumetricFog
-            density={state.fogDensity}
-            parting={state.parting}
-            wind={state.wind}
-            bodyReveal={state.bodyReveal}
-            bodySide={state.bodySide}
-            approach={fogApproach}
-            color={HERO_STORY_FOG}
-          />
-        )}
+          {showFog && (
+            <VolumetricFog
+              density={state.fogDensity * (1 - cinemaOpen * 0.85)}
+              parting={state.parting}
+              wind={state.wind}
+              bodyReveal={state.bodyReveal}
+              bodySide={state.bodySide}
+              approach={fogApproach}
+              color={HERO_STORY_FOG}
+            />
+          )}
 
-        <Suspense fallback={null}>
-          <HeroCharacterLayer
-            characters={HERO_CHARACTERS}
-            characterIndex={state.characterIndex}
-            bodyReveal={showStory ? state.bodyReveal : 0}
-            finale={false}
-            finaleLocal={0}
-          />
-        </Suspense>
-      </group>
-
-      {/* Single 360° cinema wall */}
-      {isFinale && (
-        <Suspense fallback={null}>
-          <FinaleCinemaWorld local={state.local} mouse={mouse} />
-        </Suspense>
+          {showCharacters && (
+            <Suspense fallback={null}>
+              <HeroCharacterLayer
+                characters={HERO_CHARACTERS}
+                characterIndex={state.characterIndex}
+                bodyReveal={state.bodyReveal}
+                finale={false}
+                finaleLocal={0}
+              />
+            </Suspense>
+          )}
+        </group>
       )}
+
+      {/* Always mount early so post-load opening has no hitch */}
+      <Suspense fallback={null}>
+        <FinaleCinemaWorld
+          local={wallLocal}
+          active={showCinema}
+          mouse={mouse}
+        />
+      </Suspense>
     </group>
   );
 }

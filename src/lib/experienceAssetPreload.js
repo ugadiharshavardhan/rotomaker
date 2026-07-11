@@ -3,7 +3,8 @@ import { warmImageCache } from "@/lib/moviesImageCache";
 import { MOVIE_IMAGES } from "@/lib/portfolioData";
 import { EXPERIENCE_IMAGE_URLS } from "@/lib/imagePreload";
 import { SERVICE_IMAGE_URLS } from "@/lib/servicesData";
-import { MOVIE_LIBRARY_CATEGORIES } from "@/lib/moviesData";
+import { HERO_CHARACTER_IMAGES } from "@/lib/heroStory";
+import { MOVIE_LIBRARY_IMAGES } from "@/lib/moviesData";
 import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
 import { EARTH_GLB_PATH } from "@/lib/globeModelPath";
 import { DRAGON_GLB_PATH } from "@/lib/dragonModelPath";
@@ -64,16 +65,13 @@ const CHUNK_LOADERS = [
 
 export const EXPERIENCE_GLB_PATHS = [CAMERA_GLB_PATH, EARTH_GLB_PATH, DRAGON_GLB_PATH];
 
-const MOVIE_LIBRARY_IMAGES = MOVIE_LIBRARY_CATEGORIES.flatMap((category) =>
-  category.movies.map((movie) => movie.image).filter(Boolean)
-);
-
 const CRITICAL_IMAGES = [
   "/got.jpg",
   "/spider-man-hanging.png",
   "/vfx/vfx-after.png",
   "/vfx/vfx-brfore.png",
   ...MOVIE_IMAGES,
+  ...HERO_CHARACTER_IMAGES,
 ];
 
 function uniqueUrls(urls) {

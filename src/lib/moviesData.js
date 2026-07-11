@@ -17,3 +17,12 @@ export const MOVIE_LIBRARY_PANELS = MOVIE_LIBRARY_CATEGORIES.map((category) => (
   key: category.id,
   category,
 }));
+
+/** Unique poster URLs from the Our Movies library (same source as the movies section). */
+export const MOVIE_LIBRARY_IMAGES = [
+  ...new Set(
+    MOVIE_LIBRARY_CATEGORIES.flatMap((category) =>
+      category.movies.map((movie) => movie.image).filter(Boolean)
+    )
+  ),
+];
