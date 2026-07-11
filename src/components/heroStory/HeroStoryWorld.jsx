@@ -26,14 +26,15 @@ function HeroAtmosphere({ lightBehind }) {
 }
 
 /**
- * Fog story reveals unchanged.
- * Finale = infinite 360° Wall of Cinema (concentric poster rings).
+ * Keep story + finale both mounted so scrolling back restores characters
+ * without remounting textures / Suspense.
  */
 export function HeroStoryWorld({ progress = 0, opacity = 1, mouse }) {
   const state = useMemo(() => getHeroStoryState(progress), [progress]);
   const isFinale = state.phase === "finale";
   const fogApproach = state.fogApproach ?? (state.fogDensity > 0 ? 1 : 0);
   const showFog = !isFinale && fogApproach > 0.02 && state.fogDensity > 0.02;
+  const showStory = !isFinale;
 
   useEffect(() => {
     HERO_CHARACTERS.forEach((c) => {
@@ -52,40 +53,42 @@ export function HeroStoryWorld({ progress = 0, opacity = 1, mouse }) {
       <color attach="background" args={[HERO_STORY_BG]} />
       <HeroCameraRig progress={progress} mouse={mouse} active={opacity > 0.02} />
 
-      {isFinale ? (
+      {/* Character fog story — stays mounted for scroll-back */}
+      <group visible={showStory}>
+        <HeroAtmosphere lightBehind={state.lightBehind} />
+
+        {fogApproach > 0.15 && (
+          <HeroParticles density={0.45 * fogApproach} wind={state.wind} />
+        )}
+
+        {showFog && (
+          <VolumetricFog
+            density={state.fogDensity}
+            parting={state.parting}
+            wind={state.wind}
+            bodyReveal={state.bodyReveal}
+            bodySide={state.bodySide}
+            approach={fogApproach}
+            color={HERO_STORY_FOG}
+          />
+        )}
+
+        <Suspense fallback={null}>
+          <HeroCharacterLayer
+            characters={HERO_CHARACTERS}
+            characterIndex={state.characterIndex}
+            bodyReveal={showStory ? state.bodyReveal : 0}
+            finale={false}
+            finaleLocal={0}
+          />
+        </Suspense>
+      </group>
+
+      {/* Single 360° cinema wall */}
+      {isFinale && (
         <Suspense fallback={null}>
           <FinaleCinemaWorld local={state.local} mouse={mouse} />
         </Suspense>
-      ) : (
-        <>
-          <HeroAtmosphere lightBehind={state.lightBehind} />
-
-          {fogApproach > 0.15 && (
-            <HeroParticles density={0.45 * fogApproach} wind={state.wind} />
-          )}
-
-          {showFog && (
-            <VolumetricFog
-              density={state.fogDensity}
-              parting={state.parting}
-              wind={state.wind}
-              bodyReveal={state.bodyReveal}
-              bodySide={state.bodySide}
-              approach={fogApproach}
-              color={HERO_STORY_FOG}
-            />
-          )}
-
-          <Suspense fallback={null}>
-            <HeroCharacterLayer
-              characters={HERO_CHARACTERS}
-              characterIndex={state.characterIndex}
-              bodyReveal={state.bodyReveal}
-              finale={false}
-              finaleLocal={0}
-            />
-          </Suspense>
-        </>
       )}
     </group>
   );

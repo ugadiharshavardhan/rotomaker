@@ -16,12 +16,9 @@ const _obj = new THREE.Object3D();
 /** Portrait poster cell — width / height */
 const ASPECT = 0.68;
 
-/**
- * Single cylindrical hall — one solid wall only (no rings behind it).
- * Columns are derived from circumference so tiles sit edge-to-edge.
- */
+/** Single cylindrical hall — extra rings caused a ghost wall behind the first. */
 const RING_DEFS = [
-  { radius: 11, rows: 7, speed: 0.01, dir: 1, opacity: 1, gap: 0.035 },
+  { radius: 11, rows: 6, speed: 0.01, dir: 1, opacity: 1, gap: 0.035 },
 ];
 
 function hash01(n) {
@@ -110,12 +107,6 @@ function PosterBatch({ texture, items, opacity }) {
     m.instanceMatrix.needsUpdate = true;
   }, [items, count]);
 
-  useFrame(() => {
-    const m = mesh.current;
-    if (!m) return;
-    m.material.opacity = opacity;
-  });
-
   if (!count) return null;
 
   return (
@@ -123,15 +114,15 @@ function PosterBatch({ texture, items, opacity }) {
       ref={mesh}
       args={[SHARED_PLANE, undefined, count]}
       frustumCulled={false}
+      visible={opacity > 0.02}
     >
+      {/* Opaque JPGs — transparency let the far side of the cylinder ghost through */}
       <meshBasicMaterial
         map={texture}
-        transparent={opacity < 0.99}
-        opacity={opacity}
-        depthWrite={true}
-        depthTest={true}
         toneMapped={false}
         side={THREE.FrontSide}
+        depthWrite
+        depthTest
       />
     </instancedMesh>
   );
@@ -202,9 +193,9 @@ function FinaleSilhouettes({ open = 0 }) {
   });
 
   const slots = [
-    { angle: 1.15, r: 10.2, y: -4.2, s: [2.0, 3.0] },
-    { angle: -1.35, r: 10.3, y: -4.3, s: [1.9, 2.9] },
-    { angle: 2.55, r: 10.1, y: -4.4, s: [1.8, 2.7] },
+    { angle: 1.15, r: 9.6, y: -3.4, s: [2.0, 3.0] },
+    { angle: -1.35, r: 9.8, y: -3.5, s: [1.9, 2.9] },
+    { angle: 2.55, r: 13.8, y: -3.6, s: [1.8, 2.7] },
   ];
 
   return (
@@ -326,7 +317,7 @@ export function FinaleCinemaWorld({ local = 0 }) {
   return (
     <group>
       <color attach="background" args={["#000000"]} />
-      <fog attach="fog" args={["#000000", 22, 55]} />
+      <fog attach="fog" args={["#000000", 16, 42]} />
       <FinaleLights />
       <FinaleParticles open={eased} />
 
