@@ -12,7 +12,14 @@ import { makeLazyWorld } from "@/components/experience/LazySceneWorld";
 import { GlbWarmup } from "@/components/preload/GlbWarmup";
 import { CanvasErrorBoundary } from "@/components/experience/CanvasErrorBoundary";
 import { getSceneBounds, SCENES } from "@/lib/sceneConfig";
-import { shouldShowGlbCamera, getScene1Backdrop, HERO_END, getScene1Phase, VFX_SECTION_END, IMPOSSIBLE_SECTION_END } from "@/lib/cameraLens";
+import {
+  getScene1Backdrop,
+  getScene1Phase,
+  shouldShowGlbCamera,
+  STORY_END,
+  VFX_SECTION_END,
+  IMPOSSIBLE_SECTION_END,
+} from "@/lib/cameraLens";
 import { LightRaysR3F } from "@/components/scene1/LightRaysR3F";
 import { isWebGLAvailable, isWebGLError } from "@/lib/webglSupport";
 
@@ -59,76 +66,105 @@ function shouldMountWorld(globalProgress, sceneId, opacity, lead = 0.1) {
 }
 
 function WorldContent({ sceneState }) {
-  const { scenes, scene4, scene9, activeScene, globalProgress, forceWarmWorlds = false } = sceneState;
+  const { scenes, scene4, scene9, activeScene, globalProgress, forceWarmWorlds = false, mouse } = sceneState;
   const activeId = activeScene.id;
   const scene1Progress = scenes[0].progress;
-  const isPureHero = scene1Progress < HERO_END;
-  const showGlbCamera = activeId === 1 && shouldShowGlbCamera(scene1Progress, scenes[0].opacity);
+  const scene1Opacity = scenes[0].opacity;
+  const phase = getScene1Phase(scene1Progress);
+  const isStoryChapter = phase === "story" && scene1Opacity > 0.05;
+  const isVfxChapter = phase === "vfx" && scene1Opacity > 0.05;
   const isImpossible =
-    activeId === 1 &&
-    getScene1Phase(scene1Progress) === "impossible" &&
+    phase === "impossible" &&
     scene1Progress >= VFX_SECTION_END &&
-    scene1Progress < IMPOSSIBLE_SECTION_END;
+    scene1Progress < IMPOSSIBLE_SECTION_END &&
+    scene1Opacity > 0.05;
+  const showGlbCamera = shouldShowGlbCamera(scene1Progress, scene1Opacity);
   const isGlobeActive = activeId === 6 && scenes[5].opacity > 0;
   const isTunnelGallery = scenes[1].opacity > 0.05;
+  /** Keep intro chapters visible until scene 1 is mostly gone — don't cut off for early gallery fade. */
+  const showIntroWorld = scene1Opacity > 0.02 && (!isTunnelGallery || scene1Opacity > 0.35);
 
   const impossibleFade = 0.06;
   const impossibleOpacity = isImpossible
     ? Math.min(
-      (scene1Progress - VFX_SECTION_END) / impossibleFade,
-      (IMPOSSIBLE_SECTION_END - scene1Progress) / impossibleFade,
-      1
-    ) * scenes[0].opacity
+        (scene1Progress - VFX_SECTION_END) / impossibleFade,
+        (IMPOSSIBLE_SECTION_END - scene1Progress) / impossibleFade,
+        1
+      ) * scene1Opacity
     : 0;
 
-  const canvasBg = isTunnelGallery
-    ? "#f4f4f4"
-    : activeId === 1
+  const canvasBg =
+    showIntroWorld && (isStoryChapter || showGlbCamera || isImpossible)
       ? getScene1Backdrop(scene1Progress)
-      : isGlobeActive || (activeId === 6 && scenes[5].opacity > 0.001)
-        ? "#000000"
-        : "#030303";
+      : isTunnelGallery
+        ? "#f4f4f4"
+        : activeId === 1 || scene1Opacity > 0.05
+          ? getScene1Backdrop(scene1Progress)
+          : isGlobeActive || (activeId === 6 && scenes[5].opacity > 0.001)
+            ? "#000000"
+            : "#030303";
 
   const worldOpacity = (_sceneId, index) => scenes[index].opacity;
   const warmOr = (sceneId, opacity) =>
     forceWarmWorlds || shouldMountWorld(globalProgress, sceneId, opacity);
 
-  // Keep the camera scene mounted through intro so the GLB is warm before VFX.
-  const mountCameraScene = forceWarmWorlds || globalProgress < getSceneBounds(2).end;
-  const useStudioLook = !isPureHero && !showGlbCamera && !isGlobeActive && !isImpossible && !isTunnelGallery;
+  const mountCameraScene =
+    forceWarmWorlds ||
+    (globalProgress < getSceneBounds(2).end && scene1Progress >= STORY_END - 0.04);
+
+  const useStudioLook =
+    !isStoryChapter &&
+    !showGlbCamera &&
+    !isGlobeActive &&
+    !isImpossible &&
+    !isTunnelGallery &&
+    activeId > 1;
 
   return (
     <>
       <color attach="background" args={[canvasBg]} />
 
       {impossibleOpacity > 0.01 && (
-        <LightRaysR3F opacity={impossibleOpacity} />
+        <LightRaysR3F opacity={impossibleOpacity} raysColor="#ffffff" saturation={0} />
       )}
 
       {useStudioLook && (
         <StudioLighting intensity={0.85 + scenes[0].opacity * 0.15} />
       )}
 
-      {!showGlbCamera && !isPureHero && !isImpossible && !isTunnelGallery && (
+      {!showGlbCamera && !isStoryChapter && !isImpossible && !isTunnelGallery && (
         <HollywoodCameraRig sceneState={sceneState} />
       )}
 
-      {!isImpossible && !isTunnelGallery && (
-        <Scene1World progress={scenes[0].progress} opacity={scenes[0].opacity} />
+      {showIntroWorld && (
+        <Scene1World
+          progress={scenes[0].progress}
+          opacity={scenes[0].opacity}
+          mouse={mouse}
+        />
       )}
 
-      {mountCameraScene && !isImpossible && !isTunnelGallery && (
+      {mountCameraScene && !isStoryChapter && showIntroWorld && (
         <Scene
           scrollProgress={scenes[0].progress}
-          opacity={forceWarmWorlds ? Math.max(scenes[0].opacity, 0.001) : scenes[0].opacity}
+          opacity={
+            forceWarmWorlds
+              ? Math.max(isVfxChapter ? scene1Opacity : 0.001, 0.001)
+              : isVfxChapter
+                ? scene1Opacity
+                : 0
+          }
         />
       )}
 
       <LazyScene2World
-        active={warmOr(2, worldOpacity(2, 1))}
+        active={
+          forceWarmWorlds ||
+          shouldMountWorld(globalProgress, 2, worldOpacity(2, 1), 0.16)
+        }
         progress={scenes[1].progress}
         opacity={forceWarmWorlds ? Math.max(worldOpacity(2, 1), 0.001) : worldOpacity(2, 1)}
-        mouse={sceneState.mouse}
+        mouse={mouse}
       />
       <LazyServicesWorld
         active={warmOr(3, worldOpacity(3, 2))}

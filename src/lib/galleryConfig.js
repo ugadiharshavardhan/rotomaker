@@ -3,15 +3,15 @@
 export const GALLERY = {
   HALF: 3.8,
   SEG_LEN: 8,
-  SEG_COUNT: 22,
+  SEG_COUNT: 16,
   /** Fewer divisions = larger grid boxes */
   GRID_DIV: 4,
-  /** Dense poster pool (snapped to cells) */
-  POSTER_COUNT: 220,
+  /** Dense but GPU-friendly poster pool */
+  POSTER_COUNT: 128,
   /** Camera travel along −Z across scene progress 0→1 */
-  TRAVEL: 130,
+  TRAVEL: 120,
   FOG_NEAR: 5,
-  FOG_FAR: 42,
+  FOG_FAR: 40,
   BG: "#f4f4f4",
   GRID_COLOR: "#c4c4c4",
   GRID_OPACITY: 0.5,

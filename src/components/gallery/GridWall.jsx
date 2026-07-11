@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { GALLERY } from "@/lib/galleryConfig";
 
@@ -14,7 +14,6 @@ function buildWallGrid(half, length, divisions) {
     positions.push(a[0], a[1], a[2], b[0], b[1], b[2]);
   };
 
-  // Floor
   for (let i = 0; i <= divisions; i++) {
     const x = -half + i * cell;
     pushLine([x, -half, z0], [x, -half, z1]);
@@ -24,7 +23,6 @@ function buildWallGrid(half, length, divisions) {
     pushLine([-half, -half, z], [half, -half, z]);
   }
 
-  // Ceiling
   for (let i = 0; i <= divisions; i++) {
     const x = -half + i * cell;
     pushLine([x, half, z0], [x, half, z1]);
@@ -34,7 +32,6 @@ function buildWallGrid(half, length, divisions) {
     pushLine([-half, half, z], [half, half, z]);
   }
 
-  // Left
   for (let i = 0; i <= divisions; i++) {
     const y = -half + i * cell;
     pushLine([-half, y, z0], [-half, y, z1]);
@@ -44,7 +41,6 @@ function buildWallGrid(half, length, divisions) {
     pushLine([-half, -half, z], [-half, half, z]);
   }
 
-  // Right
   for (let i = 0; i <= divisions; i++) {
     const y = -half + i * cell;
     pushLine([half, y, z0], [half, y, z1]);
@@ -59,12 +55,10 @@ function buildWallGrid(half, length, divisions) {
   return geo;
 }
 
+const sharedGridGeometry = buildWallGrid(GALLERY.HALF, GALLERY.SEG_LEN, GALLERY.GRID_DIV);
+
 export function GridWall({ opacity = 1 }) {
   const materialRef = useRef();
-  const geometry = useMemo(
-    () => buildWallGrid(GALLERY.HALF, GALLERY.SEG_LEN, GALLERY.GRID_DIV),
-    []
-  );
 
   useEffect(() => {
     if (materialRef.current) {
@@ -73,7 +67,7 @@ export function GridWall({ opacity = 1 }) {
   }, [opacity]);
 
   return (
-    <lineSegments geometry={geometry}>
+    <lineSegments geometry={sharedGridGeometry}>
       <lineBasicMaterial
         ref={materialRef}
         color={GALLERY.GRID_COLOR}

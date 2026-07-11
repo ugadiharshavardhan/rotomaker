@@ -4,19 +4,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { getSceneState, getActiveSceneOpacity, getStoryOverlayOpacity, getSceneBounds } from "@/lib/sceneConfig";
 import { useScrollExperience } from "@/hooks/useScrollExperience";
-import { getScene1Phase, getScene1Backdrop, getVfxLocalProgress, getCameraPhase, STUDIO_BACKDROP } from "@/lib/cameraLens";
 import { waitForExperienceReady, prefetchUpcomingByProgress } from "@/lib/experienceAssetPreload";
 import { ExperienceLoadingScreen } from "@/components/preload/ExperienceLoadingScreen";
 import { ExperienceWarmLayer } from "@/components/preload/ExperienceWarmLayer";
 import { ServicesGradientBlindsBg } from "@/components/services/ServicesGradientBlindsBg";
 import { ScrollPulseLayer } from "./ScrollPulseLayer";
-import { HeroTypography } from "@/components/typography/HeroTypography";
 import { ParallaxBackground } from "@/components/interactions/ParallaxBackground";
-import { HeroBrand } from "@/components/scene1/HeroBrand";
-import { HangingSpiderMan } from "@/components/scene1/HangingSpiderMan";
-import { LensPortalOverlay } from "@/components/scene1/LensPortalOverlay";
+import { HeroStoryOverlay } from "@/components/heroStory/HeroStoryOverlay";
+import { HeroTypography } from "@/components/typography/HeroTypography";
 import { CameraSectionOverlay } from "@/components/scene1/CameraSectionOverlay";
+import { HangingSpiderMan } from "@/components/scene1/HangingSpiderMan";
 import { SoundWaveIndicator } from "@/components/scene1/SoundWaveIndicator";
+import { LensPortalOverlay } from "@/components/scene1/LensPortalOverlay";
 import { Scene2Overlay } from "@/components/scene2/Scene2Overlay";
 import { PortfolioImagePreloader } from "@/components/scene2/PortfolioImagePreloader";
 import { ServiceImagePreloader } from "@/components/scene2/ServiceImagePreloader";
@@ -34,6 +33,15 @@ import { AboutSection } from "@/components/about/AboutSection";
 import { WhySection } from "@/components/about/WhySection";
 import { StoryHyperspeedBg } from "@/components/about/StoryHyperspeedBg";
 import { Scene12Overlay } from "@/components/scene12/Scene12Overlay";
+import {
+  getScene1Phase,
+  getScene1Backdrop,
+  getVfxLocalProgress,
+  getCameraPhase,
+  getStoryLocalProgress,
+  STUDIO_BACKDROP,
+} from "@/lib/cameraLens";
+import { HERO_STORY_BG } from "@/lib/heroStory";
 
 const UnifiedCanvas = dynamic(
   () => import("./UnifiedCanvas").then((m) => m.UnifiedCanvas),
@@ -208,40 +216,52 @@ export default function MainExperience() {
   const overlayAbout = getStoryOverlayOpacity(globalProgress, 11);
   const overlayWhy = getStoryOverlayOpacity(globalProgress, 12);
 
-  const scene1Phase = getScene1Phase(scene1.progress);
-  const isPureHero = scene1Phase === "hero";
-  const isVfxSection = scene1Phase === "vfx";
   const activeSceneId = sceneState.activeScene.id;
   const isGalleryScene = activeSceneId === 7 || activeSceneId === 8;
   const moviesSceneStart = getSceneBounds(8).start;
   const ctaSceneStart = getSceneBounds(13).start;
   const isStoryContent = globalProgress >= moviesSceneStart && globalProgress < ctaSceneStart;
 
+  const scene1Phase = getScene1Phase(scene1.progress);
+  const isFogStory = scene1Phase === "story" && scene1.opacity > 0.05;
+  const isVfxSection = scene1Phase === "vfx" && scene1.opacity > 0.05;
+  const isImpossible = scene1Phase === "impossible" && scene1.opacity > 0.05;
+  const storyLocal = getStoryLocalProgress(scene1.progress);
+
   const isTunnelScene = overlay2 > 0.05;
-  const vignetteStrength = isTunnelScene
-    ? 0.04
-    : isStoryContent
-      ? 0.06
-      : isGalleryScene
-        ? 0.22
-        : 0.55 + globalProgress * 0.1;
+  const vignetteStrength = isFogStory
+    ? 0
+    : isTunnelScene
+      ? 0.1
+      : isVfxSection
+        ? 0.15
+        : isStoryContent
+          ? 0.06
+          : isGalleryScene
+            ? 0.22
+            : 0.55 + globalProgress * 0.1;
+
+  const lensDive = isVfxSection ? getVfxLocalProgress(scene1.progress) : 0;
+  const cameraDive = isVfxSection ? getCameraPhase(scene1.progress).dive : 0;
   const flareOpacity = isVfxSection
     ? Math.max(0, Math.min(1, getVfxLocalProgress(scene1.progress) * 0.35) * scene1.opacity)
     : 0;
 
-  const lensDive = isVfxSection ? getVfxLocalProgress(scene1.progress) : 0;
-  const cameraDive = isVfxSection ? getCameraPhase(scene1.progress).dive : 0;
   const isGlobeSection = overlayGlobe > 0.01 && activeSceneId === 6;
   const phaseBackdropColor =
-    isTunnelScene
-      ? `rgb(${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)})`
+    isFogStory
+      ? HERO_STORY_BG
       : isVfxSection
         ? STUDIO_BACKDROP
-        : isGlobeSection
-          ? "#000000"
-          : scene1.opacity > 0.01
-            ? getScene1Backdrop(scene1.progress)
-            : null;
+        : isImpossible
+          ? "#030303"
+          : isTunnelScene
+            ? `rgb(${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)})`
+            : isGlobeSection
+              ? "#000000"
+              : scene1.opacity > 0.01
+                ? getScene1Backdrop(scene1.progress)
+                : null;
 
   const studioFade =
     globalProgress >= ctaSceneStart && globalProgress < ctaSceneStart + 0.017
@@ -322,8 +342,6 @@ export default function MainExperience() {
               : undefined,
         }}
       >
-        {isPureHero && <div className="hero-backdrop" aria-hidden="true" />}
-
         {phaseBackdropColor && (
           <div
             className="scene-phase-backdrop"
@@ -339,46 +357,59 @@ export default function MainExperience() {
         <div
           className="scene-canvas-wrap"
           style={{
-            opacity: isPureHero || activeSceneId === 7 ? 0 : 1,
+            opacity: activeSceneId === 7 ? 0 : 1,
             transition: "opacity 0.65s ease",
           }}
         >
           {shouldMountExperienceCanvas && <UnifiedCanvas sceneState={sceneState} />}
         </div>
 
-        <ScrollPulseLayer microBeat={microBeat} suppressed={isStoryContent} />
+        <ScrollPulseLayer microBeat={microBeat} suppressed={isStoryContent || isFogStory} />
 
         <div
           className="scene-vignette"
           style={{
             opacity:
-              isPureHero || scene1Phase === "impossible" || isVfxSection || isTunnelScene
+              isFogStory
                 ? 0
-                : Math.max(0, 1 - lensDive * 0.85),
+                : isImpossible || isTunnelScene
+                ? isTunnelScene
+                  ? 0.4
+                  : 0
+                : isVfxSection
+                  ? Math.max(0, 1 - lensDive * 0.85)
+                  : 1,
             transition: "opacity 0.55s ease",
             background: `radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,${vignetteStrength + studioFade * 0.2}) 100%)`,
           }}
         />
 
-        {!isPureHero && isVfxSection && (
+        {isVfxSection && (
           <div
             className="scene-lens-flare"
             style={{ opacity: flareOpacity * (1 - studioFade) }}
           />
         )}
 
-        <HeroBrand progress={scene1.progress} />
+        <HeroStoryOverlay
+          progress={storyLocal}
+          opacity={
+            scene1Phase === "story"
+              ? Math.max(scene1.opacity, globalProgress < 0.02 ? 1 : 0) *
+                (1 - studioFade * 0.5)
+              : 0
+          }
+        />
 
-        <HeroTypography scene1Progress={scene1.progress} scene1Opacity={scene1.opacity} />
-
-        {!isPureHero && isVfxSection && (
+        {isVfxSection && (
           <SoundWaveIndicator progress={scene1.progress} dark />
         )}
 
-        <HangingSpiderMan progress={scene1.progress} />
-
         {isVfxSection && <LensPortalOverlay progress={scene1.progress} />}
         <CameraSectionOverlay progress={scene1.progress} />
+        <HangingSpiderMan progress={scene1.progress} />
+
+        <HeroTypography scene1Progress={scene1.progress} scene1Opacity={scene1.opacity} />
 
         <Scene2Overlay
           progress={scene2.progress}
@@ -444,7 +475,10 @@ export default function MainExperience() {
         <div
           className="scroll-hint"
           style={{
-            opacity: isPureHero || isVfxSection ? 0 : Math.max(0, 1 - globalProgress * 4),
+            opacity:
+              isFogStory || globalProgress < getSceneBounds(2).start
+                ? 0
+                : Math.max(0, 1 - globalProgress * 4),
           }}
         >
           <span className="scroll-hint__text">Scroll to continue</span>

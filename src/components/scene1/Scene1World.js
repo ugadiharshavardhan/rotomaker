@@ -1,32 +1,46 @@
 "use client";
 
+import { HeroStoryWorld } from "@/components/heroStory/HeroStoryWorld";
 import { LensFlareLight } from "@/components/scene1/FilmCamera";
 import { AmbientParticles } from "@/components/scene1/ParticleField";
-import { HERO_END, CAMERA_END } from "@/lib/cameraLens";
+import {
+  STORY_END,
+  VFX_SECTION_END,
+  getScene1Phase,
+  getStoryLocalProgress,
+} from "@/lib/cameraLens";
 
-export function Scene1World({ progress, opacity = 1 }) {
-  const flareIntensity =
-    progress < 0.35
-      ? 0.3 + progress
-      : 0.5 + Math.min(1, (progress - 0.7) / 0.3) * 2;
-
+/**
+ * Scene 1: fog hero story → (camera lives in Scene.jsx) → impossible accents.
+ */
+export function Scene1World({ progress, opacity = 1, mouse }) {
   if (opacity <= 0) return null;
 
-  const isHeroLights = progress < HERO_END;
-  const isCameraSection = progress >= HERO_END && progress < CAMERA_END;
-  const showParticles = progress >= 0.72;
+  const phase = getScene1Phase(progress);
+  const storyProgress = getStoryLocalProgress(progress);
+  const showStory = phase === "story";
+  const showImpossibleFx = phase === "impossible" || phase === "exit";
 
   return (
     <group visible={opacity > 0.01}>
-      {!isHeroLights && !isCameraSection && (
-        <>
-          <LensFlareLight intensity={flareIntensity * opacity} />
-          <ambientLight intensity={0.08 * opacity} />
-          <directionalLight position={[5, 8, 5]} intensity={0.35 * opacity} />
-        </>
+      {showStory && (
+        <HeroStoryWorld
+          progress={storyProgress}
+          opacity={opacity}
+          mouse={mouse}
+        />
       )}
 
-      {showParticles && <AmbientParticles scrollProgress={progress} />}
+      {showImpossibleFx && (
+        <>
+          <LensFlareLight intensity={(0.6 + Math.min(1, (progress - VFX_SECTION_END) / 0.1)) * opacity} />
+          <ambientLight intensity={0.1 * opacity} />
+          <directionalLight position={[5, 8, 5]} intensity={0.4 * opacity} />
+          {progress >= VFX_SECTION_END && (
+            <AmbientParticles scrollProgress={Math.min(1, (progress - STORY_END) / (1 - STORY_END))} />
+          )}
+        </>
+      )}
     </group>
   );
 }

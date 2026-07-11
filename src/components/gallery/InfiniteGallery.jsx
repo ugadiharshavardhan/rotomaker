@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { GALLERY_POSTER_URLS } from "@/lib/galleryPosters";
-import { useSafeTextures } from "@/components/portfolio/useSafeTextures";
+import { useSafeTextures, warmTextureUrls } from "@/components/portfolio/useSafeTextures";
 import { GALLERY } from "@/lib/galleryConfig";
 import { PerspectiveTunnel } from "./PerspectiveTunnel";
 import { PosterField } from "./Poster";
@@ -35,53 +35,61 @@ function VanishingCore({ cameraZRef, opacity, brighten }) {
 }
 
 /**
- * Full infinite perspective movie-poster gallery (R3F world).
+ * Gallery stays in the scene graph once LazyWorld mounts (hidden until live)
+ * so shaders/textures compile before the title beat — no scroll hitch on entry.
  */
-export function InfiniteGallery({ progress = 0, opacity = 1, mouse, active = true }) {
+export function InfiniteGallery({ progress = 0, opacity = 1, mouse, live = true }) {
   const cameraZRef = useRef(0);
   const textures = useSafeTextures(GALLERY_POSTER_URLS);
+
+  useEffect(() => {
+    warmTextureUrls(GALLERY_POSTER_URLS);
+  }, []);
+
   const entrance = getEntranceReveal(progress);
   const exitFade = getExitFade(progress);
   const exitBright = getExitBrighten(progress);
 
-  const visible = opacity > 0.01 && active;
-  const contentOpacity = opacity * exitFade;
+  const contentOpacity = Math.max(0, opacity) * exitFade;
   const lightIntensity = useMemo(
     () => contentOpacity * (0.55 + entrance * 0.45) * (1 + exitBright * 0.8),
     [contentOpacity, entrance, exitBright]
   );
 
-  if (!visible) return null;
-
   return (
-    <group>
-      <color attach="background" args={[GALLERY.BG]} />
-      <GalleryLights
-        intensity={lightIntensity}
-        cameraZRef={cameraZRef}
-        exitBright={exitBright}
-      />
+    <>
+      {/* Fog / background only while live — avoid stealing Scene 1 look while warming */}
+      {live && <color attach="background" args={[GALLERY.BG]} />}
+      {live && (
+        <GalleryLights
+          intensity={lightIntensity}
+          cameraZRef={cameraZRef}
+          exitBright={exitBright}
+        />
+      )}
       <GalleryCameraRig
         progress={progress}
         mouse={mouse}
         cameraZRef={cameraZRef}
-        active={visible}
+        active={live}
       />
-      <PerspectiveTunnel
-        cameraZRef={cameraZRef}
-        opacity={contentOpacity * entrance * (1 - exitBright * 0.85)}
-      />
-      <PosterField
-        textures={textures}
-        cameraZRef={cameraZRef}
-        opacity={contentOpacity}
-        entrance={entrance * (1 - exitBright * 0.7)}
-      />
-      <VanishingCore
-        cameraZRef={cameraZRef}
-        opacity={opacity}
-        brighten={exitBright}
-      />
-    </group>
+      <group visible={live}>
+        <PerspectiveTunnel
+          cameraZRef={cameraZRef}
+          opacity={contentOpacity * entrance * (1 - exitBright * 0.85)}
+        />
+        <PosterField
+          textures={textures}
+          cameraZRef={cameraZRef}
+          opacity={contentOpacity}
+          entrance={entrance * (1 - exitBright * 0.7)}
+        />
+        <VanishingCore
+          cameraZRef={cameraZRef}
+          opacity={opacity}
+          brighten={exitBright}
+        />
+      </group>
+    </>
   );
 }

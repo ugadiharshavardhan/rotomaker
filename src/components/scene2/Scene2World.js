@@ -2,15 +2,18 @@
 
 import { InfiniteGallery } from "@/components/gallery/InfiniteGallery";
 
+/**
+ * Always render once LazyWorld mounts so the gallery can warm off-screen.
+ */
 export function Scene2World({ progress = 0, opacity = 1, mouse }) {
-  if (opacity <= 0.01) return null;
+  const live = opacity > 0.02;
 
   return (
     <InfiniteGallery
       progress={progress}
       opacity={opacity}
       mouse={mouse}
-      active={opacity > 0.01}
+      live={live}
     />
   );
 }

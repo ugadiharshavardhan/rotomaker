@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { GALLERY, getCellSize, getCellZ, hash01 } from "@/lib/galleryConfig";
 
 const WALLS = ["left", "right", "floor", "ceiling"];
+const sharedPlaneGeometry = new THREE.PlaneGeometry(1, 1);
 
 function wallTransform(wall, u, half, inset) {
   switch (wall) {
@@ -56,10 +57,6 @@ function slotToState(slot, textureCount) {
   };
 }
 
-/**
- * Build dense grid-aligned poster slots, then subsample to POSTER_COUNT.
- * Walls are filled heavily; floor/ceiling moderately — posters sit in cell centers.
- */
 function buildDenseSlots(totalLen) {
   const cellZ = getCellZ();
   const rings = Math.max(1, Math.floor(totalLen / cellZ));
@@ -119,23 +116,25 @@ function GalleryPoster({ texture, stateRef, index, opacity, reveal }) {
 
     if (matRef.current) {
       matRef.current.opacity = opacity * reveal;
+      if (texture && matRef.current.map !== texture) {
+        matRef.current.map = texture;
+        matRef.current.needsUpdate = true;
+      }
     }
   });
 
   if (!texture) return null;
 
   return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial
+    <mesh ref={meshRef} geometry={sharedPlaneGeometry}>
+      <meshBasicMaterial
         ref={matRef}
         map={texture}
         transparent
         opacity={opacity}
-        roughness={0.5}
-        metalness={0.04}
         side={THREE.DoubleSide}
-        toneMapped
+        toneMapped={false}
+        depthWrite={false}
       />
     </mesh>
   );
@@ -144,61 +143,58 @@ function GalleryPoster({ texture, stateRef, index, opacity, reveal }) {
 export function PosterField({ textures, cameraZRef, opacity = 1, entrance = 1 }) {
   const groupRefs = useRef([]);
   const statesRef = useRef(null);
-  const texList = useMemo(() => textures?.filter(Boolean) ?? [], [textures]);
   const totalLen = GALLERY.SEG_COUNT * GALLERY.SEG_LEN;
-  const count = GALLERY.POSTER_COUNT;
+  const texCount = textures?.length ?? 0;
 
-  // Build layout once when textures are ready — never rebuild (avoids image swaps)
+  // Layout once when the texture slot count is known (stable across progressive loads)
   const states = useMemo(() => {
-    if (texList.length === 0) return null;
-    return buildInitialStates(texList.length, totalLen);
-  }, [texList, totalLen]);
+    if (texCount === 0) return null;
+    return buildInitialStates(texCount, totalLen);
+  }, [texCount, totalLen]);
 
   if (states && statesRef.current !== states) {
     statesRef.current = states;
   }
 
   useFrame(() => {
-    if (!statesRef.current || texList.length === 0) return;
+    if (!statesRef.current || texCount === 0) return;
     const camZ = cameraZRef.current;
     const behind = getCellZ() * 1.5;
     const ahead = totalLen - getCellZ() * 4;
 
-    // Only wrap Z — keep the same wall, cell, and image forever (no blink)
     statesRef.current.forEach((state, i) => {
-      while (state.z > camZ + behind) {
-        state.z -= totalLen;
-      }
-      while (state.z < camZ - ahead) {
-        state.z += totalLen;
-      }
+      while (state.z > camZ + behind) state.z -= totalLen;
+      while (state.z < camZ - ahead) state.z += totalLen;
 
       const g = groupRefs.current[i];
       if (g) g.position.z = state.z;
     });
   });
 
-  if (texList.length === 0 || !states) return null;
+  if (!states || texCount === 0) return null;
 
   return (
     <group>
-      {states.map((state, i) => (
-        <group
-          key={i}
-          ref={(el) => {
-            groupRefs.current[i] = el;
-          }}
-          position={[0, 0, state.z]}
-        >
-          <GalleryPoster
-            texture={texList[state.texIndex % texList.length]}
-            stateRef={statesRef}
-            index={i}
-            opacity={opacity}
-            reveal={entrance}
-          />
-        </group>
-      ))}
+      {states.map((state, i) => {
+        const texture = textures[state.texIndex % texCount];
+        return (
+          <group
+            key={i}
+            ref={(el) => {
+              groupRefs.current[i] = el;
+            }}
+            position={[0, 0, state.z]}
+          >
+            <GalleryPoster
+              texture={texture}
+              stateRef={statesRef}
+              index={i}
+              opacity={opacity}
+              reveal={entrance}
+            />
+          </group>
+        );
+      })}
     </group>
   );
 }

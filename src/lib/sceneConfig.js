@@ -5,14 +5,15 @@ import { getStatItemIndex, getAboutPanelIndex } from "./statsScroll";
 import { clamp, crossfadeOpacity } from "./easing";
 
 export const SCENES = [
-  { id: 1, name: "intro", start: 0, end: 0.245 },
-  { id: 2, name: "portfolio", start: 0.22, end: 0.5 },
-  { id: 3, name: "services", start: 0.475, end: 0.64 },
-  { id: 4, name: "pipeline", start: 0.635, end: 0.635 },
-  { id: 5, name: "services-words", start: 0.635, end: 0.635 },
-  { id: 6, name: "globe", start: 0.625, end: 0.705 },
-  { id: 7, name: "portfolio-reel", start: 0.69, end: 0.765 },
-  { id: 8, name: "movies-library", start: 0.75, end: 0.86 },
+  /** Fog heroes → camera → We Build Impossible need room before the tunnel. */
+  { id: 1, name: "intro", start: 0, end: 0.42 },
+  { id: 2, name: "portfolio", start: 0.4, end: 0.58 },
+  { id: 3, name: "services", start: 0.555, end: 0.68 },
+  { id: 4, name: "pipeline", start: 0.675, end: 0.675 },
+  { id: 5, name: "services-words", start: 0.675, end: 0.675 },
+  { id: 6, name: "globe", start: 0.665, end: 0.735 },
+  { id: 7, name: "portfolio-reel", start: 0.72, end: 0.78 },
+  { id: 8, name: "movies-library", start: 0.765, end: 0.86 },
   { id: 9, name: "beforeafter", start: 0.845, end: 0.885 },
   { id: 10, name: "stats", start: 0.87, end: 0.915 },
   { id: 11, name: "about", start: 0.9, end: 0.945 },
@@ -54,7 +55,7 @@ export const GLOBE_LOCATIONS = [
   },
 ];
 
-export const SCROLL_HEIGHT_VH = 1950;
+export const SCROLL_HEIGHT_VH = 2200;
 
 export function getSceneBounds(sceneId) {
   const scene = SCENES.find((s) => s.id === sceneId);

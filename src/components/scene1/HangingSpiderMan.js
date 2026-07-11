@@ -1,25 +1,29 @@
 "use client";
 
 import {
-  HERO_END,
+  STORY_END,
   VFX_SECTION_END,
   getScene1Phase,
   getVfxLocalProgress,
   getCameraPhase,
 } from "@/lib/cameraLens";
 
+/**
+ * Hanging Spider-Man — camera / VFX studio section only.
+ */
 export function HangingSpiderMan({ progress }) {
   const phase = getScene1Phase(progress);
 
-  if (phase !== "vfx" || progress < HERO_END || progress >= VFX_SECTION_END) {
+  if (phase !== "vfx" || progress < STORY_END || progress >= VFX_SECTION_END) {
     return null;
   }
 
   const local = getVfxLocalProgress(progress);
   const { dive } = getCameraPhase(progress);
+  const fadeIn = Math.min(1, local / 0.1);
   const fadeOut = local > 0.88 ? Math.max(0, 1 - (local - 0.88) / 0.12) : 1;
   const diveFade = dive > 0.06 ? Math.max(0, 1 - (dive - 0.06) / 0.24) : 1;
-  const opacity = fadeOut * diveFade;
+  const opacity = fadeIn * fadeOut * diveFade;
 
   if (opacity <= 0.01) return null;
 

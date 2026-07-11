@@ -24,7 +24,10 @@ export function crossfadeOpacity(global, start, end, edgeFade = 0.028, isLast = 
   const span = Math.max(end - start, 0.0001);
   const fade = Math.min(edgeFade, span * 0.4);
 
-  const fadeIn = smoothstep(clamp((global - start) / fade));
-  const fadeOut = isLast ? 1 : smoothstep(clamp((end - global) / fade));
+  // Scene starting at 0 has no previous section — never fade in from invisible
+  // (otherwise progress 0 yields opacity 0 and a black hole after loading).
+  const fadeIn =
+    start <= 0 ? 1 : smoothstep(clamp((global - start) / Math.max(fade, 0.0001)));
+  const fadeOut = isLast ? 1 : smoothstep(clamp((end - global) / Math.max(fade, 0.0001)));
   return fadeIn * fadeOut;
 }
