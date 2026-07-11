@@ -19,8 +19,6 @@ function isGlobeScene(globalProgress) {
 function getBaseZ(globalProgress, scenes) {
   const p3 = scenes[2]?.progress ?? 0;
   const p4 = scenes[3]?.progress ?? 0;
-  const p5 = scenes[4]?.progress ?? 0;
-  const p6 = scenes[5]?.progress ?? 0;
   const p7 = scenes[6]?.progress ?? 0;
   const p8 = scenes[7]?.progress ?? 0;
   const p9 = scenes[8]?.progress ?? 0;
@@ -61,17 +59,6 @@ function getBaseY(globalProgress, scenes) {
   return 0.2;
 }
 
-function getBaseX(globalProgress, scenes) {
-  const portfolio = getSceneBounds(2);
-  if (globalProgress >= portfolio.start && globalProgress < portfolio.end) {
-    return 0;
-  }
-  if (isGlobeScene(globalProgress)) {
-    return 0.08;
-  }
-  return Math.sin(globalProgress * Math.PI * 2) * 0.35;
-}
-
 function isStoryScene(globalProgress) {
   const { start } = getSceneBounds(7);
   const { start: ctaStart } = getSceneBounds(13);
@@ -83,11 +70,22 @@ function isPortfolioScene(globalProgress) {
   return globalProgress >= start && globalProgress < end;
 }
 
+const DEFAULT_FOV = 45;
+const SNAP_DISTANCE = 1.35;
+
+/**
+ * Shared camera for non-GLB / non-tunnel scenes.
+ * Keeps X centered except for the intentional globe framing offset.
+ * Snaps on large jumps so fast scroll / reverse scroll never leave
+ * models stuck on the left from a previous section's camera pose.
+ */
 export function HollywoodCameraRig({ sceneState }) {
   const { camera, size } = useThree();
   const lookTarget = useRef(new THREE.Vector3(0, 0, 0));
   const cameraTarget = useRef(new THREE.Vector3(0, 1.2, 5.5));
   const maxGlobeProgress = useRef(0);
+  const needsSnap = useRef(true);
+  const lastModeRef = useRef("");
   const { globalProgress, scenes, microBeat } = sceneState;
 
   useFrame((state) => {
@@ -97,6 +95,12 @@ export function HollywoodCameraRig({ sceneState }) {
     const globe = isGlobeScene(globalProgress);
     const story = isStoryScene(globalProgress);
     const steadyCamera = portfolio || globe || story;
+    const mode = globe ? "globe" : portfolio ? "portfolio" : story ? "story" : "default";
+
+    if (lastModeRef.current !== mode) {
+      lastModeRef.current = mode;
+      needsSnap.current = true;
+    }
 
     if (!globe) {
       if (globalProgress < getSceneBounds(6).start) maxGlobeProgress.current = 0;
@@ -116,25 +120,26 @@ export function HollywoodCameraRig({ sceneState }) {
 
     let baseZ = getBaseZ(globalProgress, scenes);
     if (globe) {
-      // Pull back enough that the full globe stays inside the frame
       baseZ = lerp(7.2, isMobileGlobe ? 10.2 : 9.4, globeSmooth);
     }
     const baseY = getBaseY(globalProgress, scenes);
-    let baseX = getBaseX(globalProgress, scenes);
-    let lookX = baseX * 0.5;
+
+    // Stay centered for every section except the globe's deliberate framing.
+    // The old sin(progress) X drift left models stuck on the left during fast/reverse scroll.
+    let baseX = 0;
+    let lookX = 0;
     let lookY = 0.1;
     if (globe) {
       baseX = lerp(0, globeLayout.cameraX, globeSmooth);
       lookX = lerp(0, globeLayout.lookX, globeSmooth);
       lookY = lerp(0.1, 0.1 + (globeLayout.worldY ?? 0) * 0.35, globeSmooth);
-    } else if (portfolio) {
-      lookX = 0;
     }
-    const orbitX = steadyCamera ? 0 : Math.sin(t * 0.11 + beat * 0.05) * 0.28;
-    const orbitY = steadyCamera ? 0 : Math.cos(t * 0.09 + beat * 0.04) * 0.14;
-    const dolly = steadyCamera ? 0 : Math.sin(t * 0.13 + globalProgress * 3) * 0.35;
-    const crane = steadyCamera ? 0 : Math.sin(t * 0.07 + globalProgress * 2) * 0.18;
-    const push = steadyCamera ? 0 : Math.sin(beat * 0.3) * 0.12;
+
+    const orbitX = steadyCamera ? 0 : Math.sin(t * 0.11 + beat * 0.05) * 0.06;
+    const orbitY = steadyCamera ? 0 : Math.cos(t * 0.09 + beat * 0.04) * 0.04;
+    const dolly = steadyCamera ? 0 : Math.sin(t * 0.13 + globalProgress * 3) * 0.18;
+    const crane = steadyCamera ? 0 : Math.sin(t * 0.07 + globalProgress * 2) * 0.08;
+    const push = steadyCamera ? 0 : Math.sin(beat * 0.3) * 0.04;
 
     let exitPull = 0;
     let exitLift = 0;
@@ -148,19 +153,34 @@ export function HollywoodCameraRig({ sceneState }) {
 
     cameraTarget.current.set(
       baseX + orbitX,
-      baseY + orbitY + crane + exitLift,
+      baseY + orbitY + crane + exitLift + push * 0.15,
       baseZ + dolly - exitPull
     );
 
-    const camLerp = globe ? 0.045 : steadyCamera ? 0.1 : 0.075;
-    camera.position.lerp(cameraTarget.current, camLerp);
+    const dist = camera.position.distanceTo(cameraTarget.current);
+    const snap = needsSnap.current || dist > SNAP_DISTANCE;
+    if (snap) {
+      camera.position.copy(cameraTarget.current);
+      lookTarget.current.set(lookX, lookY - lookDown, 0);
+      camera.fov = DEFAULT_FOV;
+      camera.updateProjectionMatrix();
+      needsSnap.current = false;
+    } else {
+      const camLerp = globe ? 0.08 : steadyCamera ? 0.16 : 0.14;
+      camera.position.lerp(cameraTarget.current, camLerp);
+      lookTarget.current.set(
+        lookX,
+        lookY - lookDown + (steadyCamera ? 0 : Math.cos(t * 0.08) * 0.03),
+        0
+      );
+      if (Math.abs(camera.fov - DEFAULT_FOV) > 0.05) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, DEFAULT_FOV, 0.25);
+        camera.updateProjectionMatrix();
+      }
+    }
 
-    lookTarget.current.set(
-      lookX,
-      lookY - lookDown + (steadyCamera ? 0 : Math.cos(t * 0.08) * 0.08),
-      0
-    );
     camera.lookAt(lookTarget.current);
+    camera.rotation.z = 0;
   });
 
   return null;

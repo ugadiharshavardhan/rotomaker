@@ -26,17 +26,24 @@ function CameraOrbitRig({ scrollProgress }) {
   const dampedFov = useRef(45);
   const hasSnapped = useRef(false);
   const lastSizeRef = useRef({ w: size.width, h: size.height });
+  const lastProgressRef = useRef(scrollProgress);
 
   if (lastSizeRef.current.w !== size.width || lastSizeRef.current.h !== size.height) {
     lastSizeRef.current = { w: size.width, h: size.height };
     hasSnapped.current = false;
   }
 
+  // Fast / reverse scroll jumps leave damping mid-orbit on the left — resync.
+  if (Math.abs(scrollProgress - lastProgressRef.current) > 0.08) {
+    hasSnapped.current = false;
+  }
+  lastProgressRef.current = scrollProgress;
+
   useFrame((_, delta) => {
     const zoom = getCameraZoom(scrollProgress);
-    const { dive, orbit } = getCameraPhase(scrollProgress);
+    const { dive } = getCameraPhase(scrollProgress);
     const faceLens = getLensFaceAmount(scrollProgress);
-    const damp = 1 - Math.pow(faceLens > 0.2 ? 0.00006 : 0.0004, delta);
+    const damp = 1 - Math.pow(faceLens > 0.2 ? 0.00012 : 0.0004, delta);
     const lens = new THREE.Vector3(...CAMERA_LENS_TARGET);
     const modelCenter = new THREE.Vector3(0, layout.modelOffsetY ?? 0, 0);
 
@@ -52,17 +59,11 @@ function CameraOrbitRig({ scrollProgress }) {
     let targetFov = 45;
 
     if (dive <= 0.001) {
-      // Keep the view mostly frontal so the model's side→front turn is obvious
-      const maxAngle = layout.centerModel ? Math.PI * 0.03 : Math.PI * 0.05;
-      const orbitAngle = orbit * maxAngle * (1 - faceLens);
+      // Keep the view frontal / centered — no side orbit that reads as "stuck left"
       const radius = THREE.MathUtils.lerp(baseRadius, baseRadius * 0.9, faceLens);
       const height = THREE.MathUtils.lerp(baseHeight, 0.34, faceLens);
 
-      targetPos = new THREE.Vector3(
-        Math.sin(orbitAngle) * radius,
-        height,
-        Math.cos(orbitAngle) * radius
-      );
+      targetPos = new THREE.Vector3(0, height, radius);
       targetLook = modelCenter.clone().lerp(lens, faceLens * 0.75);
       targetFov =
         layout.orbitFov != null
@@ -76,9 +77,9 @@ function CameraOrbitRig({ scrollProgress }) {
       // Continuous push from the front-facing orbit into the lens — never sideways
       const eased = easeInCubic(dive);
       const front = new THREE.Vector3(0, 0.36, baseRadius * 0.92);
-      const approach = new THREE.Vector3(0.04, 0.34, 5.1);
-      const atLens = new THREE.Vector3(0.02, 0.3, 4.15);
-      const through = new THREE.Vector3(0.01, 0.26, 3.35);
+      const approach = new THREE.Vector3(0, 0.34, 5.1);
+      const atLens = new THREE.Vector3(0, 0.3, 4.15);
+      const through = new THREE.Vector3(0, 0.26, 3.35);
 
       if (eased < 0.35) {
         const local = eased / 0.35;
@@ -115,6 +116,7 @@ function CameraOrbitRig({ scrollProgress }) {
 
     camera.position.copy(dampedPos.current);
     camera.lookAt(dampedLook.current);
+    camera.rotation.z = 0;
     camera.fov = dampedFov.current;
     camera.updateProjectionMatrix();
   });

@@ -604,9 +604,11 @@ const Hyperspeed = ({ effectOptions = DEFAULT_EFFECT_OPTIONS }) => {
  if (this.options.distortion.getJS) {
  const distortion = this.options.distortion.getJS(0.025, time);
 
+ // Keep the road centered — never accumulate sideways look drift
+ this.camera.position.x = 0;
  this.camera.lookAt(
  new THREE.Vector3(
- this.camera.position.x + distortion.x,
+ distortion.x * 0.15,
  this.camera.position.y + distortion.y,
  this.camera.position.z + distortion.z
  )

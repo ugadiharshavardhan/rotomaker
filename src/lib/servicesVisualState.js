@@ -2,21 +2,22 @@ import { VFX_SERVICES } from "@/lib/servicesData";
 import { getServicesItemIndex } from "@/lib/statsScroll";
 import { smoothstep, clamp } from "@/lib/easing";
 
-export const SERVICES_INTRO_END = 0.18;
-export const SERVICES_WORDS_END = 0.18;
+export const SERVICES_INTRO_END = 0.55;
+export const SERVICES_WORDS_END = 0.55;
 
 export const SERVICES_INTRO_WORD = { key: "intro", text: "We Don't Just Edit.", type: "intro" };
 
 export function getServicesIntroBgOpacity(progress, overlayOpacity = 1, studioFade = 0) {
   const base = overlayOpacity * (1 - studioFade * 0.5);
-  if (progress < 0.02) return 0;
+  if (progress < 0.04) return 0;
 
   if (progress < SERVICES_INTRO_END) {
-    const reveal = smoothstep(clamp((progress - 0.02) / 0.08));
+    const reveal = smoothstep(clamp((progress - 0.04) / 0.1));
+    // Keep the intro line fully visible for most of its scroll window
     const fadeOut =
-      progress < SERVICES_INTRO_END * 0.85
+      progress < SERVICES_INTRO_END * 0.88
         ? 1
-        : 1 - smoothstep(clamp((progress - SERVICES_INTRO_END * 0.85) / (SERVICES_INTRO_END * 0.15)));
+        : 1 - smoothstep(clamp((progress - SERVICES_INTRO_END * 0.88) / (SERVICES_INTRO_END * 0.12)));
     return base * reveal * fadeOut;
   }
 
@@ -26,9 +27,9 @@ export function getServicesIntroBgOpacity(progress, overlayOpacity = 1, studioFa
 
 export function getServicesCardsBgOpacity(progress, overlayOpacity = 1, studioFade = 0) {
   const base = overlayOpacity * (1 - studioFade * 0.5);
-  if (progress < SERVICES_INTRO_END * 0.78) return 0;
+  if (progress < SERVICES_INTRO_END * 0.86) return 0;
 
-  const fadeIn = smoothstep(clamp((progress - SERVICES_INTRO_END * 0.78) / 0.14));
+  const fadeIn = smoothstep(clamp((progress - SERVICES_INTRO_END * 0.86) / 0.12));
   return base * fadeIn;
 }
 

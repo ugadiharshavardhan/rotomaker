@@ -169,11 +169,12 @@ export default function MainExperience() {
   const sceneState = useMemo(
     () => ({
       ...getSceneState(globalProgress),
+      mouse,
       onGlbWarm: handleGlbWarm,
       // Never force-mount every R3F world — that exhausts WebGL contexts and crashes deploy/preview tabs.
       forceWarmWorlds: false,
     }),
-    [globalProgress, handleGlbWarm]
+    [globalProgress, mouse, handleGlbWarm]
   );
 
   const { scenes, microBeat } = sceneState;
@@ -193,8 +194,11 @@ export default function MainExperience() {
 
   const isInteractive = globalProgress >= getSceneBounds(6).start;
 
-  const overlay2 = getActiveSceneOpacity(globalProgress, 2);
-  const overlay3 = getActiveSceneOpacity(globalProgress, 3);
+  const overlay2 = getActiveSceneOpacity(globalProgress, 2, 0.048);
+  const overlay3Raw = getActiveSceneOpacity(globalProgress, 3, 0.052);
+  // Hold services back until the gallery exit beat so "We Don't Just Edit" doesn't slam in
+  const galleryExitGate = Math.min(1, Math.max(0, (scene2.progress - 0.72) / 0.22));
+  const overlay3 = overlay3Raw * galleryExitGate;
   const overlay4 = getActiveSceneOpacity(globalProgress, 4);
   const overlayGlobe = getActiveSceneOpacity(globalProgress, 6);
   const overlayReel = getStoryOverlayOpacity(globalProgress, 7);
@@ -213,11 +217,14 @@ export default function MainExperience() {
   const ctaSceneStart = getSceneBounds(13).start;
   const isStoryContent = globalProgress >= moviesSceneStart && globalProgress < ctaSceneStart;
 
-  const vignetteStrength = isStoryContent
-    ? 0.06
-    : isGalleryScene
-      ? 0.22
-      : 0.55 + globalProgress * 0.1;
+  const isTunnelScene = overlay2 > 0.05;
+  const vignetteStrength = isTunnelScene
+    ? 0.04
+    : isStoryContent
+      ? 0.06
+      : isGalleryScene
+        ? 0.22
+        : 0.55 + globalProgress * 0.1;
   const flareOpacity = isVfxSection
     ? Math.max(0, Math.min(1, getVfxLocalProgress(scene1.progress) * 0.35) * scene1.opacity)
     : 0;
@@ -226,13 +233,15 @@ export default function MainExperience() {
   const cameraDive = isVfxSection ? getCameraPhase(scene1.progress).dive : 0;
   const isGlobeSection = overlayGlobe > 0.01 && activeSceneId === 6;
   const phaseBackdropColor =
-    isVfxSection
-      ? STUDIO_BACKDROP
-      : isGlobeSection
-        ? "#000000"
-        : scene1.opacity > 0.01
-          ? getScene1Backdrop(scene1.progress)
-          : null;
+    isTunnelScene
+      ? `rgb(${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)}, ${Math.round(244 - overlay3 * 220)})`
+      : isVfxSection
+        ? STUDIO_BACKDROP
+        : isGlobeSection
+          ? "#000000"
+          : scene1.opacity > 0.01
+            ? getScene1Backdrop(scene1.progress)
+            : null;
 
   const studioFade =
     globalProgress >= ctaSceneStart && globalProgress < ctaSceneStart + 0.017
@@ -328,12 +337,9 @@ export default function MainExperience() {
         )}
 
         <div
-          className={`scene-canvas-wrap${sceneState.activeScene.id === 2 ? " scene-canvas-wrap--portfolio-content" : ""}`}
+          className="scene-canvas-wrap"
           style={{
-            opacity:
-              isPureHero || activeSceneId === 2 || activeSceneId === 7
-                ? 0
-                : 1,
+            opacity: isPureHero || activeSceneId === 7 ? 0 : 1,
             transition: "opacity 0.65s ease",
           }}
         >
@@ -346,7 +352,7 @@ export default function MainExperience() {
           className="scene-vignette"
           style={{
             opacity:
-              isPureHero || scene1Phase === "impossible" || isVfxSection
+              isPureHero || scene1Phase === "impossible" || isVfxSection || isTunnelScene
                 ? 0
                 : Math.max(0, 1 - lensDive * 0.85),
             transition: "opacity 0.55s ease",

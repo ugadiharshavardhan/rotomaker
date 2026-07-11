@@ -12,10 +12,15 @@ function loadTexture(url) {
   }
 
   return new Promise((resolve) => {
+    loader.crossOrigin = "anonymous";
     loader.load(
       url,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        texture.generateMipmaps = true;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
         cache.set(url, texture);
         resolve(texture);
       },

@@ -18,13 +18,13 @@ export function useScrollExperience(triggerRef, onProgress, enabled = true) {
     if (!trigger) return;
 
     const lenis = new Lenis({
-      duration: 0.38,
+      duration: 0.55,
       easing: (t) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
-      wheelMultiplier: 1.15,
-      touchMultiplier: 1.55,
+      wheelMultiplier: 0.85,
+      touchMultiplier: 1.15,
       syncTouch: false,
-      lerp: 0.22,
+      lerp: 0.14,
       autoRaf: false,
     });
 
@@ -52,7 +52,7 @@ export function useScrollExperience(triggerRef, onProgress, enabled = true) {
           trigger,
           start: "top top",
           end: "bottom bottom",
-          scrub: true,
+          scrub: 0.65,
           onUpdate: (self) => {
             onProgressRef.current?.(self.progress);
           },

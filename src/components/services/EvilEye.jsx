@@ -220,6 +220,11 @@ export default function EvilEye({
       }
     }
     window.addEventListener("resize", resize);
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => resize())
+        : null;
+    ro?.observe(container);
     resize();
 
     const geometry = new Triangle(gl);
@@ -264,6 +269,7 @@ export default function EvilEye({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", resize);
+      ro?.disconnect();
       container.removeEventListener("mousemove", onMouseMove);
       container.removeEventListener("mouseleave", onMouseLeave);
       disposeOglCanvas(renderer);

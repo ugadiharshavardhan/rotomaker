@@ -70,18 +70,20 @@ function WorldContent({ sceneState }) {
     scene1Progress >= VFX_SECTION_END &&
     scene1Progress < IMPOSSIBLE_SECTION_END;
   const isGlobeActive = activeId === 6 && scenes[5].opacity > 0;
+  const isTunnelGallery = scenes[1].opacity > 0.05;
 
   const impossibleFade = 0.06;
   const impossibleOpacity = isImpossible
     ? Math.min(
-        (scene1Progress - VFX_SECTION_END) / impossibleFade,
-        (IMPOSSIBLE_SECTION_END - scene1Progress) / impossibleFade,
-        1
-      ) * scenes[0].opacity
+      (scene1Progress - VFX_SECTION_END) / impossibleFade,
+      (IMPOSSIBLE_SECTION_END - scene1Progress) / impossibleFade,
+      1
+    ) * scenes[0].opacity
     : 0;
 
-  const canvasBg =
-    activeId === 1
+  const canvasBg = isTunnelGallery
+    ? "#f4f4f4"
+    : activeId === 1
       ? getScene1Backdrop(scene1Progress)
       : isGlobeActive || (activeId === 6 && scenes[5].opacity > 0.001)
         ? "#000000"
@@ -93,6 +95,7 @@ function WorldContent({ sceneState }) {
 
   // Keep the camera scene mounted through intro so the GLB is warm before VFX.
   const mountCameraScene = forceWarmWorlds || globalProgress < getSceneBounds(2).end;
+  const useStudioLook = !isPureHero && !showGlbCamera && !isGlobeActive && !isImpossible && !isTunnelGallery;
 
   return (
     <>
@@ -102,19 +105,19 @@ function WorldContent({ sceneState }) {
         <LightRaysR3F opacity={impossibleOpacity} />
       )}
 
-      {!isPureHero && !showGlbCamera && !isGlobeActive && !isImpossible && (
+      {useStudioLook && (
         <StudioLighting intensity={0.85 + scenes[0].opacity * 0.15} />
       )}
 
-      {!showGlbCamera && !isPureHero && !isImpossible && (
+      {!showGlbCamera && !isPureHero && !isImpossible && !isTunnelGallery && (
         <HollywoodCameraRig sceneState={sceneState} />
       )}
 
-      {!isImpossible && (
+      {!isImpossible && !isTunnelGallery && (
         <Scene1World progress={scenes[0].progress} opacity={scenes[0].opacity} />
       )}
 
-      {mountCameraScene && !isImpossible && (
+      {mountCameraScene && !isImpossible && !isTunnelGallery && (
         <Scene
           scrollProgress={scenes[0].progress}
           opacity={forceWarmWorlds ? Math.max(scenes[0].opacity, 0.001) : scenes[0].opacity}
@@ -125,6 +128,7 @@ function WorldContent({ sceneState }) {
         active={warmOr(2, worldOpacity(2, 1))}
         progress={scenes[1].progress}
         opacity={forceWarmWorlds ? Math.max(worldOpacity(2, 1), 0.001) : worldOpacity(2, 1)}
+        mouse={sceneState.mouse}
       />
       <LazyServicesWorld
         active={warmOr(3, worldOpacity(3, 2))}
@@ -179,9 +183,7 @@ function WorldContent({ sceneState }) {
         opacity={forceWarmWorlds ? Math.max(worldOpacity(13, 12), 0.001) : worldOpacity(13, 12)}
       />
 
-      {!isPureHero && !showGlbCamera && !isGlobeActive && !isImpossible && (
-        <CinematicEffects />
-      )}
+      {useStudioLook && <CinematicEffects />}
     </>
   );
 }

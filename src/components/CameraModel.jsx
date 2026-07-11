@@ -6,7 +6,7 @@ import { useGLTF, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { CAMERA_GLB_PATH } from "@/lib/cameraModelPath";
 import { getCameraViewportLayout } from "@/lib/cameraLayout";
-import { getCameraPhase, getLensFaceAmount, CAMERA_MODEL_SIDE_YAW, CAMERA_MODEL_FRONT_YAW } from "@/lib/cameraLens";
+import { getLensFaceAmount, CAMERA_MODEL_SIDE_YAW, CAMERA_MODEL_FRONT_YAW } from "@/lib/cameraLens";
 
 useGLTF.preload(CAMERA_GLB_PATH);
 
@@ -75,37 +75,34 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
     }
 
     const t = state.clock.elapsedTime;
-    const { orbit } = getCameraPhase(scrollProgress);
     const faceLens = getLensFaceAmount(scrollProgress);
     const idle = 1 - faceLens;
 
-    // Side profile at rest → rotate +90° so the lens faces the viewer for the next section
+    // Side profile at rest → rotate +90° so the lens faces the viewer.
+    // No lateral orbit yaw — that read as the model drifting left on fast scroll.
     const showcaseYaw =
-      CAMERA_MODEL_SIDE_YAW +
-      orbit * Math.PI * 0.028 * idle +
-      Math.sin(t * 0.22) * 0.012 * idle;
+      CAMERA_MODEL_SIDE_YAW + Math.sin(t * 0.22) * 0.008 * idle;
     const targetY = THREE.MathUtils.lerp(
       showcaseYaw,
       CAMERA_MODEL_FRONT_YAW,
       faceLens
     );
-    const targetX = Math.sin(t * 0.28) * 0.008 * idle;
-    const targetFloatY = Math.sin(t * 0.5) * 0.02 * idle;
-    const targetPitch = Math.sin(t * 0.18) * 0.012 * idle;
+    const targetFloatY = Math.sin(t * 0.5) * 0.015 * idle;
+    const targetPitch = Math.sin(t * 0.18) * 0.008 * idle;
 
-    // Soft damping so the side→front turn reads slowly across scroll
-    const dampPower = faceLens > 0.05 ? 0.00004 : 0.00035;
+    // Track scroll closely during the turn so damping doesn't make it feel like a late snap
+    const dampPower = faceLens > 0.05 ? 0.00012 : 0.00035;
     const damp = 1 - Math.pow(dampPower, delta);
 
     if (!wasVisible.current) {
       damped.current.y = targetY;
-      damped.current.x = targetX;
+      damped.current.x = 0;
       damped.current.floatY = targetFloatY;
       damped.current.pitch = targetPitch;
       wasVisible.current = true;
     } else {
       damped.current.y = THREE.MathUtils.lerp(damped.current.y, targetY, damp);
-      damped.current.x = THREE.MathUtils.lerp(damped.current.x, targetX, damp);
+      damped.current.x = THREE.MathUtils.lerp(damped.current.x, 0, damp);
       damped.current.floatY = THREE.MathUtils.lerp(
         damped.current.floatY,
         targetFloatY,
@@ -121,7 +118,7 @@ export function CameraModel({ scrollProgress = 0, opacity = 1 }) {
     groupRef.current.rotation.y = damped.current.y;
     groupRef.current.rotation.x = damped.current.pitch;
     groupRef.current.rotation.z = 0;
-    groupRef.current.position.x = damped.current.x;
+    groupRef.current.position.x = 0;
     groupRef.current.position.y = (layout.modelOffsetY ?? 0) + damped.current.floatY;
     groupRef.current.position.z = 0;
   });

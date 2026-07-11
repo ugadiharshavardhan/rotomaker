@@ -8,12 +8,12 @@ import {
 import { ServicesScrollStack } from "./ServicesScrollStack";
 
 function introMotion(segmentProgress) {
-  const enter = Math.min(1, segmentProgress / 0.28);
+  const enter = Math.min(1, segmentProgress / 0.22);
   const exit =
-    segmentProgress > 0.72 ? Math.min(1, (segmentProgress - 0.72) / 0.28) : 0;
+    segmentProgress > 0.86 ? Math.min(1, (segmentProgress - 0.86) / 0.14) : 0;
   return {
     opacity: enter * (1 - exit),
-    transform: `translateY(${(1 - enter) * 24 + exit * -24}px)`,
+    transform: `translateY(${(1 - enter) * 22 + exit * -16}px)`,
   };
 }
 
@@ -30,7 +30,7 @@ function ServicesSideTitle() {
 }
 
 export function ServicesSection({ progress, opacity = 1 }) {
-  if (opacity <= 0.01 || progress < 0.02) return null;
+  if (opacity <= 0.01 || progress < 0.04) return null;
 
   if (progress < SERVICES_INTRO_END) {
     const seg = progress / SERVICES_INTRO_END;

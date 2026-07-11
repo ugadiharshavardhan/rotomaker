@@ -11,14 +11,14 @@ export const CAMERA_MODEL_FRONT_YAW = Math.PI / 2;
 
 /**
  * Scene 1 sequential phases (local 0→1 within intro).
- * Longer holds so hero → camera → impossible each read clearly on scroll.
+ * Longer VFX hold so the camera orbit + side→front turn read slowly on scroll.
  */
-export const HERO_END = 0.16;
-export const VFX_SECTION_END = 0.62;
+export const HERO_END = 0.12;
+export const VFX_SECTION_END = 0.78;
 export const IMPOSSIBLE_SECTION_END = 0.94;
 
 /** Legacy aliases used by lens portal — mapped to vfx section bounds. */
-export const CAMERA_ORBIT_END = HERO_END + (VFX_SECTION_END - HERO_END) * 0.88;
+export const CAMERA_ORBIT_END = HERO_END + (VFX_SECTION_END - HERO_END) * 0.9;
 export const CAMERA_END = VFX_SECTION_END;
 
 /** Light studio backdrop for the VFX camera block. */
@@ -54,7 +54,7 @@ export function getCameraZoom(scrollProgress) {
 export function getCameraPhase(scrollProgress) {
   const local = getVfxLocalProgress(scrollProgress);
   // Long orbit showcase; dive is a short finish into the next section.
-  const orbitSpan = 0.88;
+  const orbitSpan = 0.9;
   const orbit = Math.max(0, Math.min(1, local / orbitSpan));
   const dive = Math.max(0, Math.min(1, (local - orbitSpan) / (1 - orbitSpan)));
   return { zoom: local, orbit, dive };
@@ -62,13 +62,14 @@ export function getCameraPhase(scrollProgress) {
 
 /**
  * 0 → side-profile showcase, 1 → model rotated so the lens faces the viewer.
- * Starts late in the orbit so the turn feels deliberate, not rushed.
+ * Spread across nearly the full orbit so the 90° turn tracks scroll slowly.
  */
 export function getLensFaceAmount(scrollProgress) {
   const { orbit, dive } = getCameraPhase(scrollProgress);
   if (dive > 0) return 1;
-  const t = Math.max(0, Math.min(1, (orbit - 0.55) / 0.45));
-  return t * t * (3 - 2 * t);
+  const start = 0.06;
+  const t = Math.max(0, Math.min(1, (orbit - start) / (1 - start)));
+  return easeInOutCubic(t);
 }
 
 export function easeInCubic(t) {
