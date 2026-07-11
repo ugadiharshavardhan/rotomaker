@@ -74,10 +74,12 @@ export const HERO_BEATS = {
   finalStart: 0.85,
 };
 
-/** Body uncover — stays visible through the beat so scroll-back always shows the figure. */
+/** Body uncover — eyes → full. Fog stays; this only unmasks the texture. */
 export function getBodyReveal(characterLocal) {
-  if (characterLocal < 0.06) return characterLocal / 0.06;
-  return 1;
+  if (characterLocal < 0.1) return 0;
+  if (characterLocal < 0.45) return (characterLocal - 0.1) / 0.35;
+  if (characterLocal < 0.7) return 1;
+  return Math.max(0, 1 - (characterLocal - 0.7) / 0.25);
 }
 
 /**

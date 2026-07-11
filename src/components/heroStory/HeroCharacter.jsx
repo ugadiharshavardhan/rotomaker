@@ -194,7 +194,8 @@ export function HeroCharacterLayer({
       ? characters[characterIndex]
       : null;
 
-  if (!character || bodyReveal <= 0.01) return null;
+  // Keep mounted for the whole beat so the eyes→body shader reveal can play
+  if (!character) return null;
 
   return (
     <HeroCharacter

@@ -63,7 +63,10 @@ export function HeroCameraRig({ progress, mouse = { x: 0.5, y: 0.5 }, active = t
     const targetX = breathX + mx * 0.06;
     const targetY = 0.32 + breathY - my * 0.04;
     const targetZ = 5.4 - push + breathZ;
-    const lerp = s.phase === "character" ? 0.1 : 0.045;
+    // Snappier return from finale; soft tracking during character reveals
+    const fromFinale =
+      Math.abs(camera.position.z - targetZ) > 1.5 || Math.abs(camera.fov - 46) > 4;
+    const lerp = fromFinale ? 0.12 : 0.045;
 
     camera.position.x += (targetX - camera.position.x) * lerp;
     camera.position.y += (targetY - camera.position.y) * lerp;
@@ -72,7 +75,7 @@ export function HeroCameraRig({ progress, mouse = { x: 0.5, y: 0.5 }, active = t
     look.current.set(mx * 0.08 + s.bodyX * 0.04, 0.12 - my * 0.05, -5);
     camera.lookAt(look.current);
     if (Math.abs(camera.fov - 46) > 0.05) {
-      camera.fov += (46 - camera.fov) * 0.1;
+      camera.fov += (46 - camera.fov) * (fromFinale ? 0.12 : 0.08);
       camera.updateProjectionMatrix();
     }
   });
